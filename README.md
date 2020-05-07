@@ -6,9 +6,9 @@
 
 - command : "python supernet_main_file.py --train_or_sample train_sample --architecture_name {arch_name}"
 - (Model name should not overlap!)
-- 1. architecture search (default : 180)
-- 2. architecture sampling
-- 3. make sampled model ./{arch_name}.pth (architecture train X)
+1. architecture search (default : 180)
+2. architecture sampling
+3. make sampled model ./{arch_name}.pth (architecture train X)
 
 [] TODO : custom Module(IRF Block) => torch.nn function 
 
