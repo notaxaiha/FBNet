@@ -1,5 +1,6 @@
 # **Custom**
 - supernet : fbnet => mobilenet v2
+- LAT X
 <br></br>
 - architecture search hyperparamter change : supernet_functions/config_for_supernet.py  
 - saved log during architecture search : supernet_functions/logs
