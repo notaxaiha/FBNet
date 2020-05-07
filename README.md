@@ -1,9 +1,9 @@
 # **Custom**
 - supernet : fbnet => mobilenet v2
-</br>
+<br></br>
 - architecture search hyperparamter change : supernet_functions/config_for_supernet.py  
 - saved log during architecture search : supernet_functions/logs
-</br>
+<br></br>
 - command : "python supernet_main_file.py --train_or_sample train_sample --architecture_name {arch_name}"
 - (Model name should not overlap!)
 - 1. architecture search (default : 180)
