@@ -1,4 +1,6 @@
 import numpy as np
+import os
+import random
 import torch
 from torch import nn
 from tensorboardX import SummaryWriter
@@ -13,6 +15,8 @@ from supernet_functions.model_supernet import FBNet_Stochastic_SuperNet, Superne
 from supernet_functions.training_functions_supernet import TrainerSupernet
 from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 from fbnet_building_blocks.fbnet_modeldef import MODEL_ARCH
+
+import fbnet_building_blocks.fbnet_builder as fbnet_builder
     
 parser = argparse.ArgumentParser("action")
 parser.add_argument('--train_or_sample', type=str, default='', \
@@ -24,11 +28,17 @@ parser.add_argument('--hardsampling_bool_value', type=str, default='True', \
 args = parser.parse_args()
 
 def train_supernet():
-    manual_seed = 1
+    manual_seed = 472
+
+    os.environ['PYTHONHASHSEED'] = str(manual_seed)
+    random.seed(manual_seed)
     np.random.seed(manual_seed)
+
     torch.manual_seed(manual_seed)
     torch.cuda.manual_seed_all(manual_seed)
-    torch.backends.cudnn.benchmark = True
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     create_directories_from_list([CONFIG_SUPERNET['logging']['path_to_tensorboard_logs']])
     
@@ -50,6 +60,8 @@ def train_supernet():
     model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
+
+    # print(model)
     
     #### Loss, Optimizer and Scheduler
     criterion = SupernetLoss().cuda()
@@ -108,10 +120,26 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
                 + " was written into fbnet_building_blocks/fbnet_modeldef.py")
     
 if __name__ == "__main__":
-    assert args.train_or_sample in ['train', 'sample']
+    assert args.train_or_sample in ['train', 'sample', 'train_sample']
     if args.train_or_sample == 'train':
         train_supernet()
+
     elif args.train_or_sample == 'sample':
         assert args.architecture_name != '' and args.architecture_name not in MODEL_ARCH
         hardsampling = False if args.hardsampling_bool_value in ['False', '0'] else True
         sample_architecture_from_the_supernet(unique_name_of_arch=args.architecture_name, hardsampling=hardsampling)
+
+    elif args.train_or_sample == 'train_sample':
+        assert True
+        assert args.architecture_name != '' and args.architecture_name not in MODEL_ARCH
+        train_supernet()
+
+        hardsampling = False if args.hardsampling_bool_value in ['False', '0'] else True
+        sample_architecture_from_the_supernet(unique_name_of_arch=args.architecture_name, hardsampling=hardsampling)
+
+        # MODEL_ARCH update
+        model = fbnet_builder.get_model(args.architecture_name, cnt_classes=10).cuda()
+        model = model.apply(weights_init)
+
+        torch.save(model,f"{args.architecture_name}.pth")
+        torch.save(model.state_dict(), f"{args.architecture_name}_dict.pth")

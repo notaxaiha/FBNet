@@ -21,8 +21,11 @@ def main():
     np.random.seed(manual_seed)
     torch.manual_seed(manual_seed)
     torch.cuda.manual_seed_all(manual_seed)
-    torch.backends.cudnn.benchmark = True
-    
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
     create_directories_from_list([CONFIG_ARCH['logging']['path_to_tensorboard_logs']])
     
     logger = get_logger(CONFIG_ARCH['logging']['path_to_log_file'])

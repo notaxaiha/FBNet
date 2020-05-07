@@ -30,7 +30,7 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         super(FBNet_Stochastic_SuperNet, self).__init__()
         
         # self.first identical to 'add_first' in the fbnet_building_blocks/fbnet_builder.py
-        self.first = ConvBNRelu(input_depth=3, output_depth=16, kernel=3, stride=2,
+        self.first = ConvBNRelu(input_depth=3, output_depth=32, kernel=3, stride=1,
                                 pad=3 // 2, no_bias=1, use_relu="relu", bn_type="bn")
         self.stages_to_search = nn.ModuleList([MixedOperation(
                                                    lookup_table.layers_parameters[layer_id],
@@ -38,10 +38,10 @@ class FBNet_Stochastic_SuperNet(nn.Module):
                                                    lookup_table.lookup_table_latency[layer_id])
                                                for layer_id in range(lookup_table.cnt_layers)])
         self.last_stages = nn.Sequential(OrderedDict([
-            ("conv_k1", nn.Conv2d(lookup_table.layers_parameters[-1][1], 1504, kernel_size = 1)),
-            ("avg_pool_k7", nn.AvgPool2d(kernel_size=7)),
+            ("conv_k1", nn.Conv2d(lookup_table.layers_parameters[-1][1], 1280, kernel_size = 1)),
+            ("avg_pool_k7", nn.AdaptiveAvgPool2d((1, 1))),
             ("flatten", Flatten()),
-            ("fc", nn.Linear(in_features=1504, out_features=cnt_classes)),
+            ("fc", nn.Linear(in_features=1280, out_features=cnt_classes)),
         ]))
     
     def forward(self, x, temperature, latency_to_accumulate):        
@@ -61,11 +61,11 @@ class SupernetLoss(nn.Module):
     def forward(self, outs, targets, latency, losses_ce, losses_lat, N):
         
         ce = self.weight_criterion(outs, targets)
-        lat = torch.log(latency ** self.beta)
+        lat = torch.log(latency) ** self.beta
         
         losses_ce.update(ce.item(), N)
         losses_lat.update(lat.item(), N)
         
-        loss = self.alpha * ce * lat
+        loss = ce # self.alpha * ce * lat
         return loss #.unsqueeze(0)
 

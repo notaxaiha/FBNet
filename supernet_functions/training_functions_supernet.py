@@ -3,6 +3,8 @@ from torch.autograd import Variable
 import time
 from general_functions.utils import AverageMeter, save, accuracy
 from supernet_functions.config_for_supernet import CONFIG_SUPERNET
+# from tensorboardX import SummaryWriter
+import pandas as pd
 
 class TrainerSupernet:
     def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer):
@@ -26,19 +28,42 @@ class TrainerSupernet:
         self.train_thetas_from_the_epoch = CONFIG_SUPERNET['train_settings']['train_thetas_from_the_epoch']
         self.print_freq                  = CONFIG_SUPERNET['train_settings']['print_freq']
         self.path_to_save_model          = CONFIG_SUPERNET['train_settings']['path_to_save_model']
+
+        # custom scalar
+        # https://tensorboardx.readthedocs.io/en/latest/tensorboard.html?highlight=custom#tensorboardX.SummaryWriter.add_custom_scalars
+        # https://github.com/lanpa/tensorboardX/blob/master/examples/demo_custom_scalars.py
+        # self.custom_dict = dict()
+        # self.thetas_dict = dict()
+        # self.thetas_gs_dict = dict()
+        #
+        # # for i in range(len(self.theta_optimizer.param_groups[0]['params'])):
+        # for i in range(22):
+        #     self.thetas_dict[f"layer_{i}"] = ['Multiline', list()]
+        #     # self.thetas_gs_dict[f"layer_{i}"] = ['Multiline', list()]
+        #
+        #     self.thetas_dict[f"layer_{i}"][1] = [f"layer_{i}/block_{j}" for j in range(9)]
+        #     # self.thetas_gs_dict[f"layer_{i}"][1] = [f"gumbel_thetas/layer_{i}/block_{j}" for j in range(9)]
+        #
+        # self.custom_dict['thetas'] = self.thetas_dict
+        # # self.custom_dict['gumbel_thetas'] = self.thetas_gs_dict
+        #
+        # self.writer.add_custom_scalars(self.custom_dict)
+
     
     def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model):
-        
+
         best_top1 = 0.0
         
         # firstly, train weights only
-        for epoch in range(self.train_thetas_from_the_epoch):
-            self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
-            
-            self.logger.info("Firstly, start to train weights for epoch %d" % (epoch))
-            self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
-            self.w_scheduler.step()
-        
+        # for epoch in range(self.train_thetas_from_the_epoch):
+        #     self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
+        #
+        #     self.logger.info("Firstly, start to train weights for epoch %d" % (epoch))
+        #     self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
+        #     self.w_scheduler.step()
+
+        all_theta_list = []
+
         for epoch in range(self.train_thetas_from_the_epoch, self.cnt_epochs):
             self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
             self.writer.add_scalar('learning_rate/theta', self.theta_optimizer.param_groups[0]['lr'], epoch)
@@ -49,14 +74,30 @@ class TrainerSupernet:
             
             self.logger.info("Start to train theta for epoch %d" % (epoch))
             self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch, info_for_logger="_theta_step_")
-            
+
+
+            theta_list = []
+            for i in range(17):
+
+                temp_list = self.theta_optimizer.param_groups[0]['params'][i].tolist()
+                theta_list.append(temp_list)
+
+            all_theta_list.append([theta_list, self.temperature])
+
             top1_avg = self._validate(model, test_loader, epoch)
             if best_top1 < top1_avg:
                 best_top1 = top1_avg
                 self.logger.info("Best top1 acc by now. Save model")
                 save(model, self.path_to_save_model)
-            
+
+            # self.writer.add_scalar('temperature', self.temperature, epoch)
+
+
             self.temperature = self.temperature * self.exp_anneal_rate
+
+        pd.DataFrame(all_theta_list).to_csv('./supernet_functions/logs/theatas.csv')
+
+
        
     def _training_step(self, model, loader, optimizer, epoch, info_for_logger=""):
         model = model.train()

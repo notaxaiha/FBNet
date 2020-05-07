@@ -19,7 +19,7 @@ class AverageMeter(object):
         self.sum += val * n
         self.cnt += n
         self.avg = self.sum / self.cnt
-  
+
     def __str__(self):
         return "%s: %.5f" % (self._name, self.avg)
   
@@ -127,7 +127,7 @@ def check_tensor_in_list(atensor, alist):
 #              "ir_k5_e1", "ir_k5_e3", "ir_k5_e6", "ir_k5_e1", "ir_k5_e6", "ir_k5_e6", "ir_k3_e6"]
 # my_unique_name_for_ARCH = "my_unique_name_for_ARCH"
 def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH):
-    assert len(ops_names) == 22
+    # assert len(ops_names) == 22
     if my_unique_name_for_ARCH in MODEL_ARCH:
         print("The specification with the name", my_unique_name_for_ARCH, "already written \
               to the fbnet_building_blocks.fbnet_modeldef. Please, create a new name \
@@ -140,35 +140,34 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH):
             \"block_op_type\": [\n"
 
     ops = ["[\"" + str(op) + "\"], " for op in ops_names]
-    ops_lines = [ops[0], ops[1:5], ops[5:9], ops[9:13], ops[13:17], ops[17:21], ops[21]]
+    ops_lines = [ops[0], ops[1:3], ops[3:6], ops[6:10], ops[10:13], ops[13:16], ops[16]]
     ops_lines = [''.join(line) for line in ops_lines]
     text_to_write += '            ' + '\n            '.join(ops_lines)
 
     e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
 
     text_to_write += "\n\
-            ],\n\
-            \"block_cfg\": {\n\
-                \"first\": [16, 2],\n\
-                \"stages\": [\n\
-                    [["+e[0]+", 16, 1, 1]],                                                        # stage 1\n\
-                    [["+e[1]+", 24, 1, 2]],  [["+e[2]+", 24, 1, 1]],  \
-    [["+e[3]+", 24, 1, 1]],  [["+e[4]+", 24, 1, 1]],  # stage 2\n\
-                    [["+e[5]+", 32, 1, 2]],  [["+e[6]+", 32, 1, 1]],  \
-    [["+e[7]+", 32, 1, 1]],  [["+e[8]+", 32, 1, 1]],  # stage 3\n\
-                    [["+e[9]+", 64, 1, 2]],  [["+e[10]+", 64, 1, 1]],  \
-    [["+e[11]+", 64, 1, 1]],  [["+e[12]+", 64, 1, 1]],  # stage 4\n\
-                    [["+e[13]+", 112, 1, 1]], [["+e[14]+", 112, 1, 1]], \
-    [["+e[15]+", 112, 1, 1]], [["+e[16]+", 112, 1, 1]], # stage 5\n\
-                    [["+e[17]+", 184, 1, 2]], [["+e[18]+", 184, 1, 1]], \
-    [["+e[19]+", 184, 1, 1]], [["+e[20]+", 184, 1, 1]], # stage 6\n\
-                    [["+e[21]+", 352, 1, 1]],                                                       # stage 7\n\
                 ],\n\
-                \"backbone\": [num for num in range(23)],\n\
+                \"block_cfg\": {\n\
+                    \"first\": [32, 1],\n\
+                    \"stages\": [\n\
+                        [[" + e[0] + ", 16, 1, 1]],                                                        # stage 1\n\
+                        [[" + e[1] + ", 24, 1, 2]],  [[" + e[2] + ", 24, 1, 1]],  # stage 2\n\
+                        [[" + e[3] + ", 32, 1, 2]],  [[" + e[4] + ", 32, 1, 1]],  \
+        [[" + e[5] + ", 32, 1, 1]],  # stage 3\n\
+                        [[" + e[6] + ", 64, 1, 2]],  [[" + e[7] + ", 64, 1, 1]],  \
+        [[" + e[8] + ", 64, 1, 1]],  [[" + e[9] + ", 64, 1, 1]],  # stage 4\n\
+                        [[" + e[10] + ", 96, 1, 1]], [[" + e[11] + ", 96, 1, 1]], \
+        [[" + e[12] + ", 96, 1, 1]], # stage 5\n\
+                        [[" + e[13] + ", 160, 1, 2]], [[" + e[14] + ", 160, 1, 1]], \
+        [[" + e[15] + ", 160, 1, 1]], # stage 6\n\
+                        [[" + e[16] + ", 320, 1, 1]],                                                       # stage 7\n\
+                    ],\n\
+                    \"backbone\": [num for num in range(18)],\n\
+                },\n\
             },\n\
-        },\n\
-}\
-"
+    }\
+    "
     ### open file and find place to insert
     with open('./fbnet_building_blocks/fbnet_modeldef.py') as f1:
         lines = f1.readlines()
