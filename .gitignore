@@ -148,3 +148,6 @@ events*
 
 # logger
 logger
+
+# csv file
+*.csv

@@ -16,7 +16,7 @@ from supernet_functions.training_functions_supernet import TrainerSupernet
 from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 from fbnet_building_blocks.fbnet_modeldef import MODEL_ARCH
 
-import fbnet_building_blocks.fbnet_builder as fbnet_builder
+import fbnet_building_blocks.builder as fbnet_builder
     
 parser = argparse.ArgumentParser("action")
 parser.add_argument('--train_or_sample', type=str, default='', \
