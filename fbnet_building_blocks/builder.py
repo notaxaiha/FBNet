@@ -196,16 +196,12 @@ class IRFBlock(nn.Module):
         mid_depth = _get_divisible_by(mid_depth, width_divisor, width_divisor)
 
         # pw
-        self.pw = ConvBNRelu(
-            input_depth,
-            mid_depth,
-            kernel=1,
-            stride=1,
-            pad=0,
-            no_bias=1,
-            use_relu="relu",
-            bn_type=bn_type,
-            group=pw_group,
+
+        self.pw = nn.Sequential(
+            (nn.Conv2d(input_depth, mid_depth, kernel_size=1, stride=1, padding=0, groups=pw_group,
+                       bias=False)),
+            (nn.BatchNorm2d(out_depth)),
+            (nn.ReLU6(inplace=True)),
         )
 
         # negative stride to do upsampling
@@ -251,6 +247,13 @@ class IRFBlock(nn.Module):
                 bn_type=bn_type if not dw_skip_bn else None,
             )
 
+            self.dw = nn.Sequential(
+                (nn.Conv2d(mid_depth, mid_depth, kernel_size=kernel, stride=stride, padding=(kernel // 2),
+                           bias=False)),
+                (nn.BatchNorm2d(out_depth)),
+                (nn.ReLU6(inplace=True)),
+            )
+
         # pw-linear
         self.pwl = ConvBNRelu(
             mid_depth,
@@ -262,6 +265,12 @@ class IRFBlock(nn.Module):
             use_relu=None,
             bn_type=bn_type,
             group=pw_group,
+        )
+
+        self.pwl = nn.Sequential(
+            (nn.Conv2d(mid_depth, output_depth, kernel_size=1, stride=1, padding=0, groups=pw_group,
+                       bias=False)),
+            (nn.BatchNorm2d(out_depth))
         )
 
         self.shuffle_type = shuffle_type
