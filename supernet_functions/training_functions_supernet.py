@@ -7,12 +7,13 @@ from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 import pandas as pd
 
 class TrainerSupernet:
-    def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer):
+    def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer, check_flops=False):
         self.top1       = AverageMeter()
         self.top3       = AverageMeter()
         self.losses     = AverageMeter()
-        self.losses_lat = AverageMeter()
+        self.losses_flops = AverageMeter()
         self.losses_ce  = AverageMeter()
+        self.flops = AverageMeter()
         
         self.logger = logger
         self.writer = writer
@@ -21,81 +22,68 @@ class TrainerSupernet:
         self.w_optimizer = w_optimizer
         self.theta_optimizer = theta_optimizer
         self.w_scheduler = w_scheduler
+        self.check_flops = check_flops
         
         self.temperature                 = CONFIG_SUPERNET['train_settings']['init_temperature']
         self.exp_anneal_rate             = CONFIG_SUPERNET['train_settings']['exp_anneal_rate'] # apply it every epoch
         self.cnt_epochs                  = CONFIG_SUPERNET['train_settings']['cnt_epochs']
+
         self.train_thetas_from_the_epoch = CONFIG_SUPERNET['train_settings']['train_thetas_from_the_epoch']
         self.print_freq                  = CONFIG_SUPERNET['train_settings']['print_freq']
         self.path_to_save_model          = CONFIG_SUPERNET['train_settings']['path_to_save_model']
-
-        # custom scalar
-        # https://tensorboardx.readthedocs.io/en/latest/tensorboard.html?highlight=custom#tensorboardX.SummaryWriter.add_custom_scalars
-        # https://github.com/lanpa/tensorboardX/blob/master/examples/demo_custom_scalars.py
-        # self.custom_dict = dict()
-        # self.thetas_dict = dict()
-        # self.thetas_gs_dict = dict()
-        #
-        # # for i in range(len(self.theta_optimizer.param_groups[0]['params'])):
-        # for i in range(22):
-        #     self.thetas_dict[f"layer_{i}"] = ['Multiline', list()]
-        #     # self.thetas_gs_dict[f"layer_{i}"] = ['Multiline', list()]
-        #
-        #     self.thetas_dict[f"layer_{i}"][1] = [f"layer_{i}/block_{j}" for j in range(9)]
-        #     # self.thetas_gs_dict[f"layer_{i}"][1] = [f"gumbel_thetas/layer_{i}/block_{j}" for j in range(9)]
-        #
-        # self.custom_dict['thetas'] = self.thetas_dict
-        # # self.custom_dict['gumbel_thetas'] = self.thetas_gs_dict
-        #
-        # self.writer.add_custom_scalars(self.custom_dict)
 
     
     def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model):
 
         best_top1 = 0.0
-        
-        # firstly, train weights only
-        # for epoch in range(self.train_thetas_from_the_epoch):
-        #     self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
-        #
-        #     self.logger.info("Firstly, start to train weights for epoch %d" % (epoch))
-        #     self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
-        #     self.w_scheduler.step()
 
         all_theta_list = []
 
-        for epoch in range(self.train_thetas_from_the_epoch, self.cnt_epochs):
-            self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
-            self.writer.add_scalar('learning_rate/theta', self.theta_optimizer.param_groups[0]['lr'], epoch)
-            
-            self.logger.info("Start to train weights for epoch %d" % (epoch))
-            self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
-            self.w_scheduler.step()
-            
-            self.logger.info("Start to train theta for epoch %d" % (epoch))
-            self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch, info_for_logger="_theta_step_")
+        if self.check_flops == True:
+            flops_list = self._check_flops(model, test_loader)
+            return flops_list
+
+        else :
+            for epoch in range(self.train_thetas_from_the_epoch):
+
+                self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
+
+                self.logger.info("Firstly, start to train weights for epoch %d" % (epoch))
+                self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
+                self.w_scheduler.step()
+
+            for epoch in range(self.train_thetas_from_the_epoch, self.cnt_epochs):
+                self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
+                self.writer.add_scalar('learning_rate/theta', self.theta_optimizer.param_groups[0]['lr'], epoch)
+
+                self.logger.info("Start to train weights for epoch %d" % (epoch))
+                self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
+                self.w_scheduler.step()
+
+                self.logger.info("Start to train theta for epoch %d" % (epoch))
+                self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch, info_for_logger="_theta_step_")
 
 
-            theta_list = []
-            for i in range(17):
+                theta_list = []
+                for i in range(17):
 
-                temp_list = self.theta_optimizer.param_groups[0]['params'][i].tolist()
-                theta_list.append(temp_list)
+                    temp_list = self.theta_optimizer.param_groups[0]['params'][i].tolist()
+                    theta_list.append(temp_list)
 
-            all_theta_list.append([theta_list, self.temperature])
+                all_theta_list.append([theta_list, self.temperature])
 
-            top1_avg = self._validate(model, test_loader, epoch)
-            if best_top1 < top1_avg:
-                best_top1 = top1_avg
-                self.logger.info("Best top1 acc by now. Save model")
-                save(model, self.path_to_save_model)
+                top1_avg = self._validate(model, test_loader, epoch)
+                if best_top1 < top1_avg:
+                    best_top1 = top1_avg
+                    self.logger.info("Best top1 acc by now. Save model")
+                    save(model, self.path_to_save_model)
 
-            # self.writer.add_scalar('temperature', self.temperature, epoch)
+                # self.writer.add_scalar('temperature', self.temperature, epoch)
 
 
-            self.temperature = self.temperature * self.exp_anneal_rate
+                self.temperature = self.temperature * self.exp_anneal_rate
 
-        pd.DataFrame(all_theta_list).to_csv('./supernet_functions/logs/theatas.csv')
+            pd.DataFrame(all_theta_list).to_csv('./supernet_functions/logs/theatas.csv')
 
 
        
@@ -109,17 +97,32 @@ class TrainerSupernet:
             N = X.shape[0]
             
             optimizer.zero_grad()
-            latency_to_accumulate = Variable(torch.Tensor([[0.0]]), requires_grad=True).cuda()
-            outs, latency_to_accumulate = model(X, self.temperature, latency_to_accumulate)
-            loss = self.criterion(outs, y, latency_to_accumulate, self.losses_ce, self.losses_lat, N)
+            flops_to_accumulate = Variable(torch.Tensor([[0.0]]), requires_grad=True).cuda()
+            outs, flops_to_accumulate = model(X, self.temperature, flops_to_accumulate)
+            loss = self.criterion(outs, y, flops_to_accumulate, self.losses_ce, self.losses_flops, self.flops, N)
             loss.backward()
             optimizer.step()
-            
+
+
             self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader), val_or_train="Train")
         
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, info_for_logger=info_for_logger, val_or_train='train')
         for avg in [self.top1, self.top3, self.losses]:
             avg.reset()
+
+    def _check_flops(self, model, input_var):
+        model = model.train()
+        input_var = input_var.cuda(non_blocking=True)
+
+        # X.to(device, non_blocking=True), y.to(device, non_blocking=True)
+
+        #optimizer.zero_grad()
+        _, flops_list = model.get_flops(input_var, self.temperature)
+
+        return flops_list
+
+
+
         
     def _validate(self, model, loader, epoch):
         model.eval()
@@ -130,9 +133,9 @@ class TrainerSupernet:
                 X, y = X.cuda(), y.cuda()
                 N = X.shape[0]
                 
-                latency_to_accumulate = torch.Tensor([[0.0]]).cuda()
-                outs, latency_to_accumulate = model(X, self.temperature, latency_to_accumulate)
-                loss = self.criterion(outs, y, latency_to_accumulate, self.losses_ce, self.losses_lat, N)
+                flops_to_accumulate = torch.Tensor([[0.0]]).cuda()
+                outs, flops_to_accumulate = model(X, self.temperature, flops_to_accumulate)
+                loss = self.criterion(outs, y, flops_to_accumulate, self.losses_ce, self.losses_flops, self.flops, N)
 
                 self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader), val_or_train="Valid")
                 
@@ -146,8 +149,10 @@ class TrainerSupernet:
         self.writer.add_scalar('train_vs_val/'+val_or_train+'_loss'+info_for_logger, self.losses.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/'+val_or_train+'_top1'+info_for_logger, self.top1.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/'+val_or_train+'_top3'+info_for_logger, self.top3.get_avg(), epoch)
-        self.writer.add_scalar('train_vs_val/'+val_or_train+'_losses_lat'+info_for_logger, self.losses_lat.get_avg(), epoch)
+        self.writer.add_scalar('train_vs_val/'+val_or_train+'_losses_flops'+info_for_logger, self.losses_flops.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/'+val_or_train+'_losses_ce'+info_for_logger, self.losses_ce.get_avg(), epoch)
+        self.writer.add_scalar('train_vs_val/' + val_or_train + '_flops' + info_for_logger,
+                               self.flops.get_avg(), epoch)
         
         top1_avg = self.top1.get_avg()
         self.logger.info(info_for_logger+val_or_train + ": [{:3d}/{}] Final Prec@1 {:.4%} Time {:.2f}".format(
@@ -164,5 +169,5 @@ class TrainerSupernet:
                ": [{:3d}/{}] Step {:03d}/{:03d} Loss {:.3f} "
                "Prec@(1,3) ({:.1%}, {:.1%}), ce_loss {:.3f}, lat_loss {:.3f}".format(
                    epoch + 1, self.cnt_epochs, step, len_loader - 1, self.losses.get_avg(),
-                   self.top1.get_avg(), self.top3.get_avg(), self.losses_ce.get_avg(), self.losses_lat.get_avg()))
+                   self.top1.get_avg(), self.top3.get_avg(), self.losses_ce.get_avg(), self.losses_flops.get_avg()))
         

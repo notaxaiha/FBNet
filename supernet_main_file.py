@@ -16,7 +16,7 @@ from supernet_functions.training_functions_supernet import TrainerSupernet
 from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 from fbnet_building_blocks.fbnet_modeldef import MODEL_ARCH
 
-import fbnet_building_blocks.builder as fbnet_builder
+import fbnet_building_blocks.fbnet_builder as fbnet_builder
     
 parser = argparse.ArgumentParser("action")
 parser.add_argument('--train_or_sample', type=str, default='', \
@@ -87,6 +87,7 @@ def train_supernet():
     trainer = TrainerSupernet(criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer)
     trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model)
 
+
 # Arguments:
 # hardsampling=True means get operations with the largest weights
 #             =False means apply softmax to weights and sample from the distribution
@@ -118,9 +119,42 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
     writh_new_ARCH_to_fbnet_modeldef(arch_operations, my_unique_name_for_ARCH=unique_name_of_arch)
     logger.info("CONGRATULATIONS! New architecture " + unique_name_of_arch \
                 + " was written into fbnet_building_blocks/fbnet_modeldef.py")
-    
+
+def check_flops():
+    manual_seed = 472
+
+    os.environ['PYTHONHASHSEED'] = str(manual_seed)
+    random.seed(manual_seed)
+    np.random.seed(manual_seed)
+
+    torch.manual_seed(manual_seed)
+    torch.cuda.manual_seed_all(manual_seed)
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    #### LookUp table consists all information about layers
+    lookup_table = LookUpTable(calulate_latency=CONFIG_SUPERNET['lookup_table']['create_from_scratch'])
+
+    #### DataLoading
+    data_shape = [1, 3, 32, 32]
+    # data_shape = [1, 3, 224, 224]
+    input_var = torch.zeros(data_shape).cuda()
+
+    #### Model
+    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+    model = model.apply(weights_init)
+
+    #### Training Loop
+    trainer = TrainerSupernet(None, None, None, None, None, None, check_flops=True)
+    flops_list = trainer.train_loop(None, None, input_var, model)
+
+    lookup_table.write_lookup_table_to_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'], flops_list=flops_list)
+
+
+
 if __name__ == "__main__":
-    assert args.train_or_sample in ['train', 'sample', 'train_sample']
+    assert args.train_or_sample in ['train', 'sample', 'train_sample', 'flops']
     if args.train_or_sample == 'train':
         train_supernet()
 
@@ -143,3 +177,6 @@ if __name__ == "__main__":
 
         torch.save(model,f"{args.architecture_name}.pth")
         torch.save(model.state_dict(), f"{args.architecture_name}_dict.pth")
+
+    elif args.train_or_sample == 'flops':
+        check_flops()
