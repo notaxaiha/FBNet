@@ -14,13 +14,23 @@ CANDIDATE_BLOCKS = ["ir_k3_e1", "ir_k3_s2", "ir_k3_e3",
 SEARCH_SPACE = OrderedDict([
     #### table 1. input shapes of 22 searched layers (considering with strides)
     # Note: the second and third dimentions are recommended (will not be used in training) and written just for debagging
-    ("input_shape", [(32, 112, 112),
-                     (16, 112, 112), (24, 56, 56),
-                     (24, 56, 56),   (32, 28, 28),  (32, 28, 28),
-                     (32, 28, 28),   (64, 14, 14),  (64, 14, 14),  (64, 14, 14),
-                     (64, 14, 14),   (96, 14, 14), (96, 14, 14),
-                     (96, 14, 14),  (160, 7, 7),   (160, 7, 7),
-                     (160, 7, 7)]),
+    # Imagenet - original
+    # ("input_shape", [(32, 112, 112),
+    #                  (16, 112, 112), (24, 56, 56),
+    #                  (24, 56, 56), (32, 28, 28), (32, 28, 28),
+    #                  (32, 28, 28), (64, 14, 14), (64, 14, 14), (64, 14, 14),
+    #                  (64, 14, 14), (96, 14, 14), (96, 14, 14),
+    #                  (96, 14, 14), (160, 7, 7), (160, 7, 7),
+    #                  (160, 7, 7)]),
+
+    # cifar-10
+    ("input_shape", [(32, 32, 32),
+                     (16, 32, 32), (24, 32, 32),
+                     (24, 32, 32),   (32, 16, 16),  (32, 28, 16),
+                     (32, 16, 16),   (64, 8, 8),  (64, 8, 8),  (64, 8, 8),
+                     (64, 8, 8),   (96, 8, 8), (96, 8, 8),
+                     (96, 8, 8),  (160, 4, 4),   (160, 4, 4),
+                     (160, 4, 4)]),
     # table 1. filter numbers over the 22 layers
     ("channel_size", [16,
                       24,  24,
@@ -30,6 +40,7 @@ SEARCH_SPACE = OrderedDict([
                       160, 160, 160,
                       320]),
     # table 1. strides over the 22 layers
+    # mobiletnet v2 - cifar 10
     ("strides", [1,
                  1, 1,
                  2, 1, 1,
@@ -37,6 +48,15 @@ SEARCH_SPACE = OrderedDict([
                  1, 1, 1,
                  2, 1, 1,
                  1])
+
+    # # mobilenet v2 -imagenet - orig
+    # ("strides", [1,
+    #              2, 1,
+    #              2, 1, 1,
+    #              2, 1, 1, 1,
+    #              1, 1, 1,
+    #              2, 1, 1,
+    #              1])
 ])
 
 # **** to recalculate latency use command:
@@ -44,6 +64,8 @@ SEARCH_SPACE = OrderedDict([
 # results will be written to './supernet_functions/lookup_table.txt''
 # **** to read latency from the another file use command:
 # l_table = LookUpTable(calulate_latency=False, path_to_file='lookup_table.txt')
+
+# TODO - flops change
 class LookUpTable:
     def __init__(self, candidate_blocks=CANDIDATE_BLOCKS, search_space=SEARCH_SPACE,
                  calulate_latency=False):
@@ -55,13 +77,15 @@ class LookUpTable:
         self.layers_parameters, self.layers_input_shapes = self._generate_layers_parameters(search_space)
         
         # lookup_table
-        self.lookup_table_latency = None
-        if calulate_latency:
-            self._create_from_operations(cnt_of_runs=CONFIG_SUPERNET['lookup_table']['number_of_runs'],
-                                         write_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'])
-        else:
-            self._create_from_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'])
-    
+        self.lookup_table_flops = None
+        # if calulate_latency:
+        #     self._create_from_operations(cnt_of_runs=CONFIG_SUPERNET['lookup_table']['number_of_runs'],
+        #                                  write_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'])
+        # else:
+        #     self._create_from_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'])
+        #
+        self._create_from_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'])
+
     def _generate_layers_parameters(self, search_space):
         # layers_parameters are : C_in, C_out, expansion, stride
         layers_parameters = [(search_space["input_shape"][layer_id][0],
@@ -79,55 +103,63 @@ class LookUpTable:
         return layers_parameters, layers_input_shapes
     
     # CNT_OP_RUNS us number of times to check latency (we will take average)
-    def _create_from_operations(self, cnt_of_runs, write_to_file=None):
-        self.lookup_table_latency = self._calculate_latency(self.lookup_table_operations,
-                                                            self.layers_parameters,
-                                                            self.layers_input_shapes,
-                                                            cnt_of_runs)
-        if write_to_file is not None:
-            self._write_lookup_table_to_file(write_to_file)
-    
-    def _calculate_latency(self, operations, layers_parameters, layers_input_shapes, cnt_of_runs):
-        LATENCY_BATCH_SIZE = 1
-        latency_table_layer_by_ops = [{} for i in range(self.cnt_layers)]
-        
-        for layer_id in range(self.cnt_layers):
-            for op_name in operations:
-                op = operations[op_name](*layers_parameters[layer_id])
-                input_sample = torch.randn((LATENCY_BATCH_SIZE, *layers_input_shapes[layer_id]))
-                globals()['op'], globals()['input_sample'] = op, input_sample
-                total_time = timeit.timeit('output = op(input_sample)', setup="gc.enable()", \
-                                           globals=globals(), number=cnt_of_runs)
-                # measured in micro-second
-                latency_table_layer_by_ops[layer_id][op_name] = total_time / cnt_of_runs / LATENCY_BATCH_SIZE * 1e6
-                
-        return latency_table_layer_by_ops
-    
-    def _write_lookup_table_to_file(self, path_to_file):
+    # def _create_from_operations(self, cnt_of_runs, write_to_file=None):
+    #     self.lookup_table_latency = self._calculate_latency(self.lookup_table_operations,
+    #                                                         self.layers_parameters,
+    #                                                         self.layers_input_shapes,
+    #                                                         cnt_of_runs)
+    #     if write_to_file is not None:
+    #         self.write_lookup_table_to_file(write_to_file)
+    #
+    # def _calculate_latency(self, operations, layers_parameters, layers_input_shapes, cnt_of_runs):
+    #     LATENCY_BATCH_SIZE = 1
+    #     latency_table_layer_by_ops = [{} for i in range(self.cnt_layers)]
+    #
+    #     for layer_id in range(self.cnt_layers):
+    #         for op_name in operations:
+    #             op = operations[op_name](*layers_parameters[layer_id])
+    #             input_sample = torch.randn((LATENCY_BATCH_SIZE, *layers_input_shapes[layer_id]))
+    #             globals()['op'], globals()['input_sample'] = op, input_sample
+    #             total_time = timeit.timeit('output = op(input_sample)', setup="gc.enable()", \
+    #                                        globals=globals(), number=cnt_of_runs)
+    #             # measured in micro-second
+    #             latency_table_layer_by_ops[layer_id][op_name] = total_time / cnt_of_runs / LATENCY_BATCH_SIZE * 1e6
+    #
+    #     return latency_table_layer_by_ops
+    #
+    def write_lookup_table_to_file(self, path_to_file, flops_list):
+        # candidate blocks
         clear_files_in_the_list([path_to_file])
         ops = [op_name for op_name in self.lookup_table_operations]
         text = [op_name + " " for op_name in ops[:-1]]
         text.append(ops[-1] + "\n")
-        
-        for layer_id in range(self.cnt_layers):
-            for op_name in ops:
-                text.append(str(self.lookup_table_latency[layer_id][op_name]))
+
+
+        # for layer_id in range(self.cnt_layers):
+        #     for op_name in ops:
+        #         text.append(str(self.lookup_table_latency[layer_id][op_name]))
+        #         text.append(" ")
+        #     text[-1] = "\n"
+        # text = text[:-1]
+
+        for i in range(len(flops_list)):
+            for j in range(len(flops_list[i])):
+                text.append(str(flops_list[i][j]))
                 text.append(" ")
             text[-1] = "\n"
-        text = text[:-1]
-        
         text = ''.join(text)
+
         add_text_to_file(text, path_to_file)
     
     def _create_from_file(self, path_to_file):
-        self.lookup_table_latency = self._read_lookup_table_from_file(path_to_file)
+        self.lookup_table_flops = self._read_lookup_table_from_file(path_to_file)
     
     def _read_lookup_table_from_file(self, path_to_file):
-        latences = [line.strip('\n') for line in open(path_to_file)]
-        ops_names = latences[0].split(" ")
-        latences = [list(map(float, layer.split(" "))) for layer in latences[1:]]
+        flops = [line.strip('\n') for line in open(path_to_file)]
+        ops_names = flops[0].split(" ")
+        flops = [list(map(float, layer.split(" "))) for layer in flops[1:]]
         
-        lookup_table_latency = [{op_name : latences[i][op_id] 
+        lookup_table_flops= [{op_name : flops[i][op_id]
                                       for op_id, op_name in enumerate(ops_names)
                                      } for i in range(self.cnt_layers)]
-        return lookup_table_latency
+        return lookup_table_flops

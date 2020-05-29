@@ -1,6 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+<<<<<<< HEAD
   <component name="PropertiesComponent">
     <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
   </component>
+=======
+  <component name="ChangeListManager">
+    <list default="true" id="d4a02bda-7fff-4af4-8c39-17dd3beb784c" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/supernet_functions/lookup_table_backup.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supernet_functions/lookup_table_cifar10.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/supernet_functions/lookup_table_imagenet.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fbnet_building_blocks/builder.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/fbnet_building_blocks/fbnet_builder.py" beforeDir="false" afterPath="$PROJECT_DIR$/fbnet_building_blocks/fbnet_builder.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/general_functions/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/general_functions/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supernet_functions/config_for_supernet.py" beforeDir="false" afterPath="$PROJECT_DIR$/supernet_functions/config_for_supernet.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supernet_functions/lookup_table.txt" beforeDir="false" afterPath="$PROJECT_DIR$/supernet_functions/lookup_table.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supernet_functions/lookup_table_builder.py" beforeDir="false" afterPath="$PROJECT_DIR$/supernet_functions/lookup_table_builder.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supernet_functions/model_supernet.py" beforeDir="false" afterPath="$PROJECT_DIR$/supernet_functions/model_supernet.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supernet_functions/training_functions_supernet.py" beforeDir="false" afterPath="$PROJECT_DIR$/supernet_functions/training_functions_supernet.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/supernet_main_file.py" beforeDir="false" afterPath="$PROJECT_DIR$/supernet_main_file.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1cA1RcYY51NqU9HNwcZejJmPwTB" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/supernet_functions" />
+    <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/supernet_functions" />
+    </key>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d4a02bda-7fff-4af4-8c39-17dd3beb784c" name="Default Changelist" comment="" />
+      <created>1589956577042</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1589956577042</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="1099" y="363" width="524" height="502" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1590027410055">
+      <screen x="0" y="27" width="1920" height="1053" />
+    </state>
+    <state x="1099" y="363" width="524" height="502" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/1920.0.1920.1080/0.27.1920.1053@0.27.1920.1053" timestamp="1590027410055" />
+    <state x="2004" y="307" width="770" height="773" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1590474830406">
+      <screen x="1920" y="0" width="1920" height="1080" />
+    </state>
+    <state x="2004" y="307" width="770" height="773" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser/1920.0.1920.1080/0.27.1920.1053@1920.0.1920.1080" timestamp="1590474830406" />
+    <state x="357" y="465" width="1599" height="1038" key="dock-window-1" timestamp="1590555259346">
+      <screen x="0" y="27" width="1920" height="1053" />
+    </state>
+    <state x="357" y="465" width="1599" height="1038" key="dock-window-1/1920.0.1920.1080/0.27.1920.1053@0.27.1920.1053" timestamp="1590555259346" />
+    <state x="446" y="194" width="1599" height="1038" key="dock-window-1/1920.0.1920.1080/0.27.1920.1053@1920.0.1920.1080" timestamp="1590554362678" />
+    <state x="2784" y="558" width="1056" height="522" key="find.popup" timestamp="1590558841573">
+      <screen x="1920" y="0" width="1920" height="1080" />
+    </state>
+    <state x="864" y="558" width="1056" height="522" key="find.popup/1920.0.1920.1080/0.27.1920.1053@0.27.1920.1053" timestamp="1590556888867" />
+    <state x="2784" y="558" width="1056" height="522" key="find.popup/1920.0.1920.1080/0.27.1920.1053@1920.0.1920.1080" timestamp="1590558841573" />
+    <state x="1029" y="333" width="672" height="678" key="search.everywhere.popup" timestamp="1590460563287">
+      <screen x="0" y="27" width="1920" height="1053" />
+    </state>
+    <state x="1029" y="333" width="672" height="678" key="search.everywhere.popup/1920.0.1920.1080/0.27.1920.1053@0.27.1920.1053" timestamp="1590460563287" />
+    <state x="2949" y="314" width="672" height="696" key="search.everywhere.popup/1920.0.1920.1080/0.27.1920.1053@1920.0.1920.1080" timestamp="1590041202367" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/supernet_functions/model_supernet.py</url>
+          <line>87</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+>>>>>>> 2c105cc0a2b92416560b246e969b2d2d678dcd2e
 </project>

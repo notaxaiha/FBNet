@@ -18,6 +18,12 @@ from .layers import (
 from . import fbnet_modeldef
 import importlib
 
+import sys
+
+sys.path.append('../')
+
+from general_functions.utils import count_conv_flop
+
 logger = logging.getLogger(__name__)
 
 def _py2_round(x):
@@ -224,6 +230,17 @@ class Identity(nn.Module):
             out = x
         return out
 
+    def get_flops(self, x):
+
+        if self.conv:
+            # self.flops = 0
+            self.flops = count_conv_flop(self.conv, x)
+            out = self.conv(x)
+        else:
+            self.flops = 0
+            out = x
+        return self.flops, out
+
 
 class CascadeConv3x3(nn.Sequential):
     def __init__(self, C_in, C_out, stride):
@@ -371,8 +388,16 @@ class ConvBNRelu(nn.Sequential):
             bn_type = bn_type[0]
         assert bn_type in ["bn", "af", "gn", None]
         assert stride in [1, 2, 4]
+        # for flops calculation
 
-        op = Conv2d(
+        self.stride = (stride, stride)
+        self.in_channels = input_depth
+        self.out_channels = output_depth
+        self.kernel_size = (kernel, kernel)
+        self.groups = group
+
+
+        self.conv = Conv2d(
             input_depth,
             output_depth,
             kernel_size=kernel,
@@ -383,22 +408,45 @@ class ConvBNRelu(nn.Sequential):
             *args,
             **kwargs
         )
-        nn.init.kaiming_normal_(op.weight, mode="fan_out", nonlinearity="relu")
-        if op.bias is not None:
-            nn.init.constant_(op.bias, 0.0)
-        self.add_module("conv", op)
+        nn.init.kaiming_normal_(self.conv.weight, mode="fan_out", nonlinearity="relu")
+        if self.conv.bias is not None:
+            nn.init.constant_(self.conv.bias, 0.0)
+        # self.add_module("conv", self.op)
 
+        self.bn = None
         if bn_type == "bn":
-            bn_op = BatchNorm2d(output_depth)
+            self.bn = BatchNorm2d(output_depth)
         elif bn_type == "gn":
-            bn_op = nn.GroupNorm(num_groups=gn_group, num_channels=output_depth)
+            self.bn = nn.GroupNorm(num_groups=gn_group, num_channels=output_depth)
         elif bn_type == "af":
-            bn_op = FrozenBatchNorm2d(output_depth)
-        if bn_type is not None:
-            self.add_module("bn", bn_op)
+            self.bn = FrozenBatchNorm2d(output_depth)
+        # if bn_type is not None:
+            # self.add_module("bn", self.bn_op)
 
+        self.relu = None
         if use_relu == "relu":
-            self.add_module("relu", nn.ReLU(inplace=True))
+            self.relu = nn.ReLU(inplace=True)
+            # self.add_module("relu",  self.activation)
+
+    def get_flops(self, x, only_flops=False):
+        flops1 = count_conv_flop(self.conv, x)
+
+        if only_flops:
+            return flops1
+
+        y = self.conv(x)
+
+        if self.bn != None:
+            y = self.bn(y)
+
+        if self.relu != None:
+            y = self.relu(y)
+
+        return flops1, y
+
+
+
+
 
 
 class SEModule(nn.Module):
@@ -492,6 +540,7 @@ class IRFBlock(nn.Module):
         # negative stride to do upsampling
         self.upscale, stride = _get_upsample_op(stride)
 
+        # self.dw_kernel == 1
         # dw
         if kernel == 1:
             self.dw = nn.Sequential()
@@ -565,6 +614,28 @@ class IRFBlock(nn.Module):
             y += x
         y = self.se4(y)
         return y
+
+    def get_flops(self, x):
+        flops1, y = self.pw.get_flops(x)
+        if self.shuffle_type == "mid":
+            y = self.shuffle(y)
+        if self.upscale is not None:
+            y = self.upscale(y)
+
+        flops2, y = self.dw.get_flops(y)
+        flops3, y = self.pwl.get_flops(y)
+
+        flops4 = 0
+
+
+        if self.use_res_connect:
+            y += x
+
+            flops4 = 0
+            # TODO - update for skip connection flops
+            # ProxylessNas doesn't add skip connection flops
+        y = self.se4(y)
+        return (flops1 + flops2 + flops3 + flops4), y
 
 
 def _expand_block_cfg(block_cfg):

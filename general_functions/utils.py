@@ -175,3 +175,20 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH):
     text_to_write = lines[:end_of_MODEL_ARCH_id] + [text_to_write]
     with open('./fbnet_building_blocks/fbnet_modeldef.py', 'w') as f2:
         f2.writelines(text_to_write)
+
+def count_parameters(model):
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total_params
+
+# TODO - Flops formula check
+def count_conv_flop(layer, x):
+
+
+    out_h = int(x.size()[2] / layer.stride[0])
+    out_w = int(x.size()[3] / layer.stride[1])
+
+    # print(f"f_h : {out_h}, f_w : {out_w}, c_in : {layer.in_channels}, c_out : {layer.out_channels}, k_h : {layer.kernel_size[0]}, k_w : {layer.kernel_size[1]}, g : {layer.groups}")
+
+    delta_ops = layer.in_channels * layer.out_channels * layer.kernel_size[0] * layer.kernel_size[1] * \
+                out_h * out_w / layer.groups
+    return delta_ops

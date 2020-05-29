@@ -7,7 +7,7 @@ CONFIG_SUPERNET = {
     'lookup_table' : {
         'create_from_scratch' : False,
         'path_to_lookup_table' : './supernet_functions/lookup_table.txt',
-        'number_of_runs' : 0 # each operation run number_of_runs times and then we will take average
+        'number_of_runs' : 15 # each operation run number_of_runs times and then we will take average
     },
     'logging' : {
         'path_to_log_file' : './supernet_functions/logs/logger/',
@@ -29,10 +29,12 @@ CONFIG_SUPERNET = {
     },
     'loss' : {
         'alpha' : 0.2,
-        'beta' : 0.6
+        'beta' : 0.3,
+        'reg_lambda' : 1e-1,
+        'reg_loss_type' : 'add#linear'  # 'add#linear', 'mul#log'
     },
     'train_settings' : {
-        'cnt_epochs' : 1, # 90
+        'cnt_epochs' : 5, # 90
         'train_thetas_from_the_epoch' : 0,
         'print_freq' : 50,
         'path_to_save_model' : './supernet_functions/logs/best_model.pth',
