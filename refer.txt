@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=1 python3 supernet_main_file.py --train_or_sample train --architecture_name FBNet_w2a2_clipval8_decay0.001

@@ -1,13 +1,14 @@
 import torch
 from torch.autograd import Variable
 import time
+import math
 from general_functions.utils import AverageMeter, save, accuracy
 from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 # from tensorboardX import SummaryWriter
 import pandas as pd
 
 class TrainerSupernet:
-    def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer):
+    def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer, comp_scheduler=None):
         self.top1       = AverageMeter()
         self.top3       = AverageMeter()
         self.losses     = AverageMeter()
@@ -28,6 +29,8 @@ class TrainerSupernet:
         self.train_thetas_from_the_epoch = CONFIG_SUPERNET['train_settings']['train_thetas_from_the_epoch']
         self.print_freq                  = CONFIG_SUPERNET['train_settings']['print_freq']
         self.path_to_save_model          = CONFIG_SUPERNET['train_settings']['path_to_save_model']
+
+        self.comp_scheduler = comp_scheduler
 
         # custom scalar
         # https://tensorboardx.readthedocs.io/en/latest/tensorboard.html?highlight=custom#tensorboardX.SummaryWriter.add_custom_scalars
@@ -71,7 +74,7 @@ class TrainerSupernet:
             self.logger.info("Start to train weights for epoch %d" % (epoch))
             self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
             self.w_scheduler.step()
-            
+
             self.logger.info("Start to train theta for epoch %d" % (epoch))
             self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch, info_for_logger="_theta_step_")
 
@@ -102,21 +105,41 @@ class TrainerSupernet:
     def _training_step(self, model, loader, optimizer, epoch, info_for_logger=""):
         model = model.train()
         start_time = time.time()
-        
+
+        total_samples = len(loader.sampler)
+        batch_size = loader.batch_size
+        steps_per_epoch = math.ceil(total_samples / batch_size)
+
         for step, (X, y) in enumerate(loader):
             X, y = X.cuda(non_blocking=True), y.cuda(non_blocking=True)
             # X.to(device, non_blocking=True), y.to(device, non_blocking=True)
             N = X.shape[0]
             
-            optimizer.zero_grad()
+
             latency_to_accumulate = Variable(torch.Tensor([[0.0]]), requires_grad=True).cuda()
+
+            self.comp_scheduler.on_minibatch_begin(epoch, step, steps_per_epoch, optimizer)
+
             outs, latency_to_accumulate = model(X, self.temperature, latency_to_accumulate)
             loss = self.criterion(outs, y, latency_to_accumulate, self.losses_ce, self.losses_lat, N)
-            loss.backward()
+
+            agg_loss = self.comp_scheduler.before_backward_pass(epoch, step, steps_per_epoch, loss,
+                                                                  optimizer=optimizer, return_loss_components=True)
+            loss = agg_loss.overall_loss
+            optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+
+            # loss.backward()
+            # torch.nn.utils.clip_grad_norm(model.parameters(), 1)
+            # print(loss.item(),
+            #       self.comp_scheduler.policies[0][0].quantizer._get_new_optimizer_params_groups()[0]['params'][
+            #           0].item(), model.module.stages_to_search[0].ops[0].pw.relu.clip_val.grad.item())
+
+            self.comp_scheduler.before_parameter_optimization(epoch, step, steps_per_epoch, optimizer)
             optimizer.step()
-            
+            self.comp_scheduler.on_minibatch_end(epoch, step, steps_per_epoch, optimizer)
             self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader), val_or_train="Train")
-        
+
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, info_for_logger=info_for_logger, val_or_train='train')
         for avg in [self.top1, self.top3, self.losses]:
             avg.reset()

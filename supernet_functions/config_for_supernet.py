@@ -14,7 +14,7 @@ CONFIG_SUPERNET = {
         'path_to_tensorboard_logs' : './supernet_functions/logs/tb'
     },
     'dataloading' : {
-        'batch_size' : 128,
+        'batch_size' : 50,
         'w_share_in_train' : 0.8,
         'path_to_save_data' : './cifar10_data'
     },
@@ -32,7 +32,7 @@ CONFIG_SUPERNET = {
         'beta' : 0.6
     },
     'train_settings' : {
-        'cnt_epochs' : 1, # 90
+        'cnt_epochs' : 180, # 90
         'train_thetas_from_the_epoch' : 0,
         'print_freq' : 50,
         'path_to_save_model' : './supernet_functions/logs/best_model.pth',

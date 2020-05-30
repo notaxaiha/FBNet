@@ -59,7 +59,7 @@ class SupernetLoss(nn.Module):
         self.weight_criterion = nn.CrossEntropyLoss()
     
     def forward(self, outs, targets, latency, losses_ce, losses_lat, N):
-        
+
         ce = self.weight_criterion(outs, targets)
         lat = torch.log(latency) ** self.beta
         
@@ -67,5 +67,6 @@ class SupernetLoss(nn.Module):
         losses_lat.update(lat.item(), N)
         
         loss = ce # self.alpha * ce * lat
+        print("loss : ", loss)
         return loss #.unsqueeze(0)
 

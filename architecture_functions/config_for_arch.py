@@ -4,7 +4,7 @@ CONFIG_ARCH = {
         'path_to_tensorboard_logs' : './architecture_functions/logs/tb'
     },
     'dataloading' : {
-        'batch_size' : 100,
+        'batch_size' : 64,
         'train_portion' : 0.8,
         'path_to_save_data' : './cifar10_data'
     },
