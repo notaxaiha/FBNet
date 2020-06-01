@@ -20,9 +20,9 @@ quantizers:
   pact_quantizer:
     class: PACTQuantizer
     act_clip_init_val: 8.0
-    act_clip_decay: 0.0001
-    bits_activations: 16
-    bits_weights: 16
+    act_clip_decay: 0.001
+    bits_activations: 2
+    bits_weights: 2
     overrides:
     # Don't quantize first and last layers
       conv1:

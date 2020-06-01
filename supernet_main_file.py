@@ -18,7 +18,10 @@ from fbnet_building_blocks.fbnet_modeldef import MODEL_ARCH
 from distiller_utils.distiller_utils import convert_model_to_pact
 
 import fbnet_building_blocks.fbnet_builder as fbnet_builder
-    
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 parser = argparse.ArgumentParser("action")
 parser.add_argument('--train_or_sample', type=str, default='', \
                     help='train means training of the SuperNet, sample means sample from SuperNet\'s results')
@@ -77,15 +80,12 @@ def train_supernet():
     comp_scheduler = convert_model_to_pact(model.stages_to_search, yaml_path, optimizer=w_optimizer)
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
-    # print(model)
+    print(model)
     #### Loss, Optimizer and Scheduler
     criterion = SupernetLoss().cuda()
 
     # thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     # params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
-
-
-
 
     last_epoch = -1
     w_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer,

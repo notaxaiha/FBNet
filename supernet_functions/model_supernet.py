@@ -44,7 +44,7 @@ class FBNet_Stochastic_SuperNet(nn.Module):
             ("fc", nn.Linear(in_features=1280, out_features=cnt_classes)),
         ]))
     
-    def forward(self, x, temperature, latency_to_accumulate):        
+    def forward(self, x, temperature, latency_to_accumulate):
         y = self.first(x)
         for mixed_op in self.stages_to_search:
             y, latency_to_accumulate = mixed_op(y, temperature, latency_to_accumulate)
@@ -67,6 +67,5 @@ class SupernetLoss(nn.Module):
         losses_lat.update(lat.item(), N)
         
         loss = ce # self.alpha * ce * lat
-        print("loss : ", loss)
         return loss #.unsqueeze(0)
 

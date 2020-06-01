@@ -555,10 +555,14 @@ class IRFBlock(nn.Module):
 
     def forward(self, x):
         y = self.pw(x)
+        # print("[wook] pw:", self.pw)
         if self.shuffle_type == "mid":
             y = self.shuffle(y)
+            # print("shuffl_type = mid")
         if self.upscale is not None:
             y = self.upscale(y)
+            # print("upscale")
+        # print("[wook] dw:", self.dw)
         y = self.dw(y)
         y = self.pwl(y)
         if self.use_res_connect:
