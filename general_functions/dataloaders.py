@@ -15,9 +15,11 @@ def get_loaders(train_portion, batch_size, path_to_save_data, logger):
         transforms.ToTensor(),
         transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
         ])
-    train_data = datasets.CIFAR10(root=path_to_save_data, train=True, 
+    train_data = datasets.CIFAR100(root=path_to_save_data, train=True, 
                                   download=True, transform=train_transform)
 
+    # train_data = datasets.CIFAR10(root=path_to_save_data, train=True, 
+    #                               download=True, transform=train_transform)
     num_train = len(train_data)                        # 50k
     indices = list(range(num_train))                   # 
     split = int(np.floor(train_portion * num_train))   # 40k
@@ -47,7 +49,9 @@ def get_test_loader(batch_size, path_to_save_data):
         transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
         ])
     
-    test_data = datasets.CIFAR10(root=path_to_save_data, train=False,
+    # test_data = datasets.CIFAR10(root=path_to_save_data, train=False,
+    #                              download=True, transform=test_transform)
+    test_data = datasets.CIFAR100(root=path_to_save_data, train=False,
                                  download=True, transform=test_transform)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size,
                                               shuffle=False, num_workers=16)
