@@ -129,7 +129,7 @@ class SupernetLoss(nn.Module):
         ce_loss = self.weight_criterion(outs, targets)
         # TODO - FLops loss
 
-        print(flops_to_accumulate)
+        # print(flops_to_accumulate)
 
         losses_ce.update(ce_loss.item(), N)
         flops.update(flops_to_accumulate.item(), N)
@@ -148,7 +148,7 @@ class SupernetLoss(nn.Module):
             reg_lambda = self.reg_lambda
             reg_loss = reg_lambda * (flops_to_accumulate - self.ref_value) / self.ref_value
 
-            print(reg_loss)
+            # print(reg_loss)
             losses_flops.update(reg_loss.item(), N)
 
             return ce_loss + reg_loss
