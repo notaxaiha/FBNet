@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+<<<<<<< HEAD
+  <component name="PropertiesComponent">
+    <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
+  </component>
+=======
   <component name="ChangeListManager">
     <list default="true" id="d4a02bda-7fff-4af4-8c39-17dd3beb784c" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
@@ -97,4 +102,5 @@
       </breakpoints>
     </breakpoint-manager>
   </component>
+>>>>>>> 2c105cc0a2b92416560b246e969b2d2d678dcd2e
 </project>

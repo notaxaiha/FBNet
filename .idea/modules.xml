@@ -2,7 +2,11 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+<<<<<<< HEAD
+      <module fileurl="file://$PROJECT_DIR$/.idea/FBNet.iml" filepath="$PROJECT_DIR$/.idea/FBNet.iml" />
+=======
       <module fileurl="file://$PROJECT_DIR$/.idea/FBNet_flopLoss.iml" filepath="$PROJECT_DIR$/.idea/FBNet_flopLoss.iml" />
+>>>>>>> 2c105cc0a2b92416560b246e969b2d2d678dcd2e
     </modules>
   </component>
 </project>
