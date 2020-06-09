@@ -10,8 +10,12 @@
 - 2. architecture sampling
 - 3. make sampled model ./{arch_name}.pth (architecture train X)
 
-[] TODO : custom Module(IRF Block) => torch.nn function 
 
+- Sampled Model's Flops, Params Check
+: python architecture_main_file.py --architecture_name={architecture_name in fbnet_modeldef.py} --fnp=True
+
+- TODO
+[ ] Add argment option for dataset 
 
 
 # **FBNet**

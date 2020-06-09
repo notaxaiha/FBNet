@@ -898,12 +898,47 @@ class FBNet(nn.Module):
         trunk_cfg = _get_trunk_cfg(arch_def)
         self.stages = builder.add_blocks(trunk_cfg["stages"])
         self.last_stages = builder.add_last_states(cnt_classes)
-    
+        self.cnt_classes = cnt_classes
+
     def forward(self, x):
         y = self.first(x)
         y = self.stages(y)
         y = self.last_stages(y)
         return y
+
+    def get_flops(self, x):
+        accumlated_flops = 0
+        flops2 = 0
+
+        # first conv
+        flops1, y = self.first.get_flops(x)
+        accumlated_flops += flops1
+
+        # searched space
+        for i in range(len(self.stages)):
+            flops, y = self.stages[i].get_flops(y)
+            flops2 += flops
+
+        accumlated_flops += flops2
+
+        # last stage
+        # if backbone changed, need, code change!!
+        last_conv_temp = ConvBNRelu(input_depth=320, output_depth=1280, kernel=1,
+                                    stride=1,
+                                    pad=0, no_bias=1, use_relu="relu", bn_type="bn")
+
+        # if stride changed, need code change!!
+        data_shape = [1, 320, 4, 4]
+        x = torch.torch.zeros(data_shape).cuda()
+
+        flops3 = last_conv_temp.get_flops(x, only_flops=True) + nn.Linear(in_features=1280, out_features=self.cnt_classes).weight.numel()
+
+        accumlated_flops += flops3
+
+        print('first stage : ', flops1)
+        print('search space : ', flops2)
+        print('last stage : ', flops3)
+        return accumlated_flops
 
 def get_model(arch, cnt_classes):
     # for reload updated arch
@@ -914,3 +949,4 @@ def get_model(arch, cnt_classes):
     builder = FBNetBuilder(width_ratio=1.0, bn_type="bn", width_divisor=8, dw_skip_bn=True, dw_skip_relu=True)
     model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes)
     return model
+
