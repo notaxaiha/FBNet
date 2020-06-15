@@ -192,8 +192,9 @@ class TrainerSupernet:
             self.writer.add_scalar('learning_rate/theta', self.theta_optimizer.param_groups[0]['lr'], epoch)
             
             self.logger.info("Start to train weights for epoch %d" % (epoch))
-            self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
-            self.w_scheduler.step()
+            top1, losses = self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
+            # self.w_scheduler.step()
+            self.comp_scheduler.on_epoch_end(epoch, self.w_optimizer, metrics={'min': losses, 'max': top1})
 
             self.logger.info("Start to train theta for epoch %d" % (epoch))
             self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch, info_for_logger="_theta_step_")
@@ -217,7 +218,8 @@ class TrainerSupernet:
 
 
             self.temperature = self.temperature * self.exp_anneal_rate
-
+            
+            
         pd.DataFrame(all_theta_list).to_csv('./supernet_functions/logs/theatas.csv')
 
 
@@ -229,7 +231,8 @@ class TrainerSupernet:
         total_samples = len(loader.sampler)
         batch_size = loader.batch_size
         steps_per_epoch = math.ceil(total_samples / batch_size)
-
+        
+        
         for step, (X, y) in enumerate(loader):
             X, y = X.cuda(non_blocking=True), y.cuda(non_blocking=True)
             # X.to(device, non_blocking=True), y.to(device, non_blocking=True)
@@ -242,12 +245,15 @@ class TrainerSupernet:
 
             outs, latency_to_accumulate = model(X, self.temperature, latency_to_accumulate)
             loss = self.criterion(outs, y, latency_to_accumulate, self.losses_ce, self.losses_lat, N)
-            '''
-            print("loss : ", loss)
+            
             agg_loss = self.comp_scheduler.before_backward_pass(epoch, step, steps_per_epoch, loss,
                                                                   optimizer=optimizer, return_loss_components=True)
+            loss = agg_loss.overall_loss                                                      
+            '''
+            print("loss : ", loss)
+            
             print("agg_loss : ", agg_loss)
-            loss = agg_loss.overall_loss
+            
             print("overall_loss : ", loss)
             '''
 
@@ -268,8 +274,11 @@ class TrainerSupernet:
             self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader), val_or_train="Train")
 
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, info_for_logger=info_for_logger, val_or_train='train')
-        for avg in [self.top1, self.top3, self.losses]:
-            avg.reset()
+
+        #for avg in [self.top1, self.top3, self.losses]:
+        #    avg.reset()
+            
+        return self.top1, self.losses
         
     def _validate(self, model, loader, epoch):
         model.eval()

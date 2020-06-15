@@ -20,7 +20,7 @@ quantizers:
   pact_quantizer:
     class: PACTQuantizer
     act_clip_init_val: 8.0
-    act_clip_decay: 0.001
+    act_clip_decay: 0.00001
     bits_activations: 2
     bits_weights: 2
     overrides:

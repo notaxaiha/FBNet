@@ -15,7 +15,7 @@ from supernet_functions.model_supernet import FBNet_Stochastic_SuperNet, Superne
 from supernet_functions.training_functions_supernet import TrainerSupernet
 from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 from fbnet_building_blocks.fbnet_modeldef import MODEL_ARCH
-from distiller_utils.distiller_utils import convert_model_to_pact
+from distiller_utils.distiller_utils import convert_model_to_quant
 
 import fbnet_building_blocks.fbnet_builder as fbnet_builder
 
@@ -31,7 +31,7 @@ parser.add_argument('--hardsampling_bool_value', type=str, default='True', \
                     help='If not False or 0 -> do hardsampling, else - softmax sampling')
 args = parser.parse_args()
 
-yaml_path = "./test_yaml.yaml"
+yaml_path = "./yaml/FBNet_DoReFa_int2.yaml"
 
 def train_supernet():
     manual_seed = 472
@@ -77,7 +77,7 @@ def train_supernet():
                                        lr=CONFIG_SUPERNET['optimizer']['thetas_lr'],
                                        weight_decay=CONFIG_SUPERNET['optimizer']['thetas_weight_decay'])
 
-    comp_scheduler = convert_model_to_pact(model.stages_to_search, yaml_path, optimizer=w_optimizer)
+    comp_scheduler, w_optimizer = convert_model_to_quant(model.stages_to_search, yaml_path, optimizer=w_optimizer)
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
     print(model)
@@ -106,7 +106,7 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
     
     lookup_table = LookUpTable()
     model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
-    comp_scheduler = convert_model_to_pact(model.stages_to_search,yaml_path)
+    comp_scheduler, optimizer = convert_model_to_quant(model.stages_to_search,yaml_path)
     model = nn.DataParallel(model)
 
     load(model, CONFIG_SUPERNET['train_settings']['path_to_save_model'])
