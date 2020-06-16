@@ -90,6 +90,7 @@ def train_supernet():
     print(model)
     #### Loss, Optimizer and Scheduler
     criterion = SupernetLoss().cuda()
+    # criterion.apply_flop_loss = False
 
     # thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     # params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]

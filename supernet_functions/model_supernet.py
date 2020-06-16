@@ -122,11 +122,16 @@ class SupernetLoss(nn.Module):
         self.reg_loss_type= CONFIG_SUPERNET['loss']['reg_loss_type']
         # self.ref_value = 300 * 1e6
         self.ref_value = 300 * 1e6 * 0.1
+        self.apply_flop_loss = True
 
     
     def forward(self, outs, targets, flops_to_accumulate, losses_ce, losses_flops, flops , N):
         
         ce_loss = self.weight_criterion(outs, targets)
+        if self.apply_flop_loss == False:
+            losses_ce.update(ce_loss.item(), N)
+            return ce_loss
+        
         # TODO - FLops loss
 
         # print(flops_to_accumulate)
