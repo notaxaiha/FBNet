@@ -15,9 +15,13 @@ from supernet_functions.model_supernet import FBNet_Stochastic_SuperNet, Superne
 from supernet_functions.training_functions_supernet import TrainerSupernet
 from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 from fbnet_building_blocks.fbnet_modeldef import MODEL_ARCH
+from distiller_utils.distiller_utils import convert_model_to_quant
 
 import fbnet_building_blocks.fbnet_builder as fbnet_builder
-    
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 parser = argparse.ArgumentParser("action")
 parser.add_argument('--train_or_sample', type=str, default='', \
                     help='train means training of the SuperNet, sample means sample from SuperNet\'s results')
@@ -25,7 +29,11 @@ parser.add_argument('--architecture_name', type=str, default='', \
                     help='Name of an architecture to be sampled')
 parser.add_argument('--hardsampling_bool_value', type=str, default='True', \
                     help='If not False or 0 -> do hardsampling, else - softmax sampling')
+parser.add_argument('--quantization', type=str, default='', \
+                    help='quantization yaml file path')
 args = parser.parse_args()
+
+yaml_path = ''
 
 def train_supernet():
     manual_seed = 472
@@ -58,33 +66,41 @@ def train_supernet():
     
     #### Model
     model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
-    model = model.apply(weights_init)
-    model = nn.DataParallel(model, device_ids=[0])
-
-    # print(model)
-    
-    #### Loss, Optimizer and Scheduler
-    criterion = SupernetLoss().cuda()
 
     thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
 
     w_optimizer = torch.optim.SGD(params=params_except_thetas,
-                                  lr=CONFIG_SUPERNET['optimizer']['w_lr'], 
+                                  lr=CONFIG_SUPERNET['optimizer']['w_lr'],
                                   momentum=CONFIG_SUPERNET['optimizer']['w_momentum'],
                                   weight_decay=CONFIG_SUPERNET['optimizer']['w_weight_decay'])
-    
+
     theta_optimizer = torch.optim.Adam(params=thetas_params,
                                        lr=CONFIG_SUPERNET['optimizer']['thetas_lr'],
                                        weight_decay=CONFIG_SUPERNET['optimizer']['thetas_weight_decay'])
+
+    if args.quantization :
+        yaml_path = args.quantization
+        comp_scheduler, w_optimizer = convert_model_to_quant(model.stages_to_search, yaml_path, optimizer=w_optimizer)
+    else :
+        comp_scheduler = None
+        
+    model = model.apply(weights_init)
+    model = nn.DataParallel(model, device_ids=[0])
+    print(model)
+    #### Loss, Optimizer and Scheduler
+    criterion = SupernetLoss().cuda()
+
+    # thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
+    # params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
 
     last_epoch = -1
     w_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer,
                                                              T_max=CONFIG_SUPERNET['train_settings']['cnt_epochs'],
                                                              last_epoch=last_epoch)
-    
+
     #### Training Loop
-    trainer = TrainerSupernet(criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer)
+    trainer = TrainerSupernet(criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer, comp_scheduler=comp_scheduler)
     trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model)
 
 
@@ -98,6 +114,11 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
     
     lookup_table = LookUpTable()
     model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+    if args.quantization :
+        yaml_path = args.quantization
+        comp_scheduler, w_optimizer = convert_model_to_quant(model.stages_to_search, yaml_path, optimizer=w_optimizer)
+    else :
+        comp_scheduler = None
     model = nn.DataParallel(model)
 
     load(model, CONFIG_SUPERNET['train_settings']['path_to_save_model'])
@@ -174,7 +195,7 @@ if __name__ == "__main__":
         # MODEL_ARCH update
         model = fbnet_builder.get_model(args.architecture_name, cnt_classes=10).cuda()
         model = model.apply(weights_init)
-
+        
         torch.save(model,f"{args.architecture_name}.pth")
         torch.save(model.state_dict(), f"{args.architecture_name}_dict.pth")
 

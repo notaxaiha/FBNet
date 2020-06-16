@@ -1,10 +1,13 @@
 import torch
 import time
+import math
+
 from general_functions.utils import AverageMeter, save, accuracy
 from architecture_functions.config_for_arch import CONFIG_ARCH
+from distiller_utils.distiller_utils import delete_float_w
 
 class TrainerArch:
-    def __init__(self, criterion, optimizer, scheduler, logger, writer):
+    def __init__(self, criterion, optimizer, scheduler, logger, writer, comp_scheduler):
         self.top1   = AverageMeter()
         self.top3   = AverageMeter()
         self.losses = AverageMeter()
@@ -20,6 +23,8 @@ class TrainerArch:
         self.cnt_epochs         = CONFIG_ARCH['train_settings']['cnt_epochs']
         self.print_freq         = CONFIG_ARCH['train_settings']['print_freq']
         
+        self.comp_scheduler = comp_scheduler
+        
     def train_loop(self, train_loader, valid_loader, model):
         best_top1 = 0.0
 
@@ -31,37 +36,67 @@ class TrainerArch:
             #    self.optimizer.param_groups[0]['lr'] *= self.lr_decay
 
             # training
-            self._train(train_loader, model, epoch)
+            top1, losses = self._train(train_loader, model, epoch)
             # validation
             top1_avg = self._validate(valid_loader, model, epoch)
 
             if best_top1 < top1_avg:
                 best_top1 = top1_avg
                 self.logger.info("Best top1 accuracy by now. Save model")
+                delete_float_w(model)
                 save(model, self.path_to_save_model)
-            self.scheduler.step()
+            
+            if self.comp_scheduler :
+                self.comp_scheduler.on_epoch_end(epoch, self.optimizer, metrics={'min': losses, 'max': top1})
+            else :
+                self.scheduler.step()
+            
         
     
     def _train(self, loader, model, epoch):
         start_time = time.time()
         model = model.train()
 
+        total_samples = len(loader.sampler)
+        batch_size = loader.batch_size
+        steps_per_epoch = math.ceil(total_samples / batch_size)
+
         for step, (X, y) in enumerate(loader):
             X, y = X.cuda(non_blocking=True), y.cuda(non_blocking=True)
             #X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
             N = X.shape[0]
+            
+            if self.comp_scheduler :
+                self.comp_scheduler.on_minibatch_begin(epoch, step, steps_per_epoch, self.optimizer)
 
             self.optimizer.zero_grad()
             outs = model(X)
             loss = self.criterion(outs, y)
+            
+            if self.comp_scheduler:
+                agg_loss = self.comp_scheduler.before_backward_pass(epoch, step, steps_per_epoch, loss,
+                                                                      optimizer=self.optimizer, return_loss_components=True)
+                loss = agg_loss.overall_loss
+            
             loss.backward()
+            
+            if self.comp_scheduler :
+                self.comp_scheduler.before_parameter_optimization(epoch, step, steps_per_epoch, self.optimizer)
+                self.comp_scheduler.on_minibatch_end(epoch, step, steps_per_epoch, self.optimizer)
+            
             self.optimizer.step()
 
             self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader), val_or_train="Train")
 
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, val_or_train='train')
+        
+        top1_acc = self.top1
+        losses = self.losses
+        
         for avg in [self.top1, self.top3, self.losses]:
             avg.reset()
+            
+        return top1_acc, losses
 
     def _validate(self, loader, model, epoch):
         model.eval()
