@@ -151,7 +151,7 @@ class SupernetLoss(nn.Module):
             # print(reg_loss)
             losses_flops.update(reg_loss.item(), N)
 
-            return ce_loss + reg_loss
+            return ce_loss # + reg_loss
 
         # loss = ce # self.alpha * ce * lat
         # return loss #.unsqueeze(0)
