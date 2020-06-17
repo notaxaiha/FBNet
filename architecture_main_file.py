@@ -3,6 +3,7 @@ from torch import nn
 import numpy as np
 from tensorboardX import SummaryWriter
 import argparse
+import os
 
 from general_functions.dataloaders import get_loaders, get_test_loader
 from general_functions.utils import get_logger, weights_init, create_directories_from_list
@@ -12,6 +13,10 @@ from architecture_functions.config_for_arch import CONFIG_ARCH
 from distiller_utils.distiller_utils import convert_model_to_quant
 
 from torchsummary import summary
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 
 parser = argparse.ArgumentParser("architecture")
 
@@ -87,7 +92,7 @@ def main():
         compression_scheduler, optimizer = convert_model_to_quant(model.module.stages,yaml_path)
     else :
         compression_scheduler = None
-    
+    print(model)
     #### Scheduler
     if CONFIG_ARCH['train_settings']['scheduler'] == 'MultiStepLR':
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,

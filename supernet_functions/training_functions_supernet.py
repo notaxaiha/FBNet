@@ -92,7 +92,6 @@ class TrainerSupernet:
                 if best_top1 < top1_avg:
                     best_top1 = top1_avg
                     self.logger.info("Best top1 acc by now. Save model")
-                    delete_float_w(model)
                     save(model, self.path_to_save_model)
 
                 # self.writer.add_scalar('temperature', self.temperature, epoch)

@@ -40,16 +40,15 @@ class TrainerArch:
             # validation
             top1_avg = self._validate(valid_loader, model, epoch)
 
-            if best_top1 < top1_avg:
-                best_top1 = top1_avg
-                self.logger.info("Best top1 accuracy by now. Save model")
-                delete_float_w(model)
-                save(model, self.path_to_save_model)
-            
             if self.comp_scheduler :
                 self.comp_scheduler.on_epoch_end(epoch, self.optimizer, metrics={'min': losses, 'max': top1})
             else :
                 self.scheduler.step()
+
+            if best_top1 < top1_avg:
+                best_top1 = top1_avg
+                self.logger.info("Best top1 accuracy by now. Save model")
+                save(model, self.path_to_save_model)
             
         
     

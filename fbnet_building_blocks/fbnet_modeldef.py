@@ -411,7 +411,7 @@ MODEL_ARCH = {
             ["ir_k3_e6"], ["ir_k3_e6"],
             ["ir_k3_e6"], ["ir_k3_e6"], ["ir_k3_e6"],
             ["ir_k3_e6"], ["ir_k3_e6"], ["ir_k3_e6"], ["ir_k3_e6"],
-            ["ir_k3_e6"], ["ir_k5_e6"], ["ir_k3_e6"],
+            ["ir_k3_e6"], ["ir_k3_e6"], ["ir_k3_e6"],
             ["ir_k3_e6"], ["ir_k3_e6"], ["ir_k3_e6"],
             ["ir_k3_e6"],
                 ],
