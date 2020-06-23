@@ -90,7 +90,7 @@ def train_supernet():
     print(model)
     #### Loss, Optimizer and Scheduler
     criterion = SupernetLoss().cuda()
-    # criterion.apply_flop_loss = False
+    criterion.apply_flop_loss = False
 
     # thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     # params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
@@ -116,6 +116,7 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
     lookup_table = LookUpTable()
     model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
     if args.quantization :
+        w_optimizer = None
         yaml_path = args.quantization
         comp_scheduler, w_optimizer = convert_model_to_quant(model.stages_to_search, yaml_path, optimizer=w_optimizer)
     else :
