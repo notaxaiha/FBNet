@@ -10,9 +10,12 @@ from general_functions.utils import get_logger, weights_init, create_directories
 import fbnet_building_blocks.fbnet_builder as fbnet_builder
 from architecture_functions.training_functions import TrainerArch
 from architecture_functions.config_for_arch import CONFIG_ARCH
+from architecture_functions.architecture_params import PARAMS_ARCH
 from distiller_utils.distiller_utils import convert_model_to_quant
 
 from torchsummary import summary
+import json
+import copy
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -52,16 +55,18 @@ def main():
     
     #### Model
     arch = args.architecture_name
+    arch_name = arch
     yaml_path = args.quantization
     
     # flops & param
     fnp = args.fnp
-    
-    model = fbnet_builder.get_model(arch, cnt_classes=10).cuda()
+
+    model = fbnet_builder.get_model(arch, cnt_classes=10, fnp=fnp).cuda()
     model = model.apply(weights_init)
     
     # only calculate flops and params
     if fnp == True:
+        params_dict = PARAMS_ARCH
         #### Training Loop
         data_shape = [1, 3, 32, 32]
         # data_shape = [1, 3, 224, 224]
@@ -71,10 +76,18 @@ def main():
         input_var = input_var.cuda(non_blocking=True)
 
         flops = model.get_flops(input_var)
+        print(arch_name, model.params)
+        print(params_dict)
+        params_dict[arch_name] = model.params
 
         print('Model\'s Flops : ', flops)
 
         print(summary(model, input_size=(data_shape[1], data_shape[2], data_shape[3])))
+
+        f = open('./architecture_functions/architecture_params.py', 'w')
+        f.write('PARAMS_ARCH = ' + json.dumps(params_dict))
+        f.close()
+
 
         return
     

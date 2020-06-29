@@ -814,6 +814,7 @@ class FBNetBuilder(object):
             isinstance(x, dict) for x in blocks
         ), blocks
 
+        params = []
         modules = OrderedDict()
         for block in blocks:
             stage_idx = block["stage_idx"]
@@ -828,8 +829,12 @@ class FBNetBuilder(object):
             nn_name = "xif{}_{}".format(stage_idx, block_idx)
             assert nn_name not in modules
             modules[nn_name] = nnblock
+
+            pm = sum([p.numel() for p in nnblock.parameters() if p.requires_grad])
+            params.append(pm)
+
         ret = nn.Sequential(modules)
-        return ret
+        return ret, params
 
     # def add_final_pool(self, model, blob_in, kernel_size):
     #     ret = model.AveragePool(blob_in, "final_avg", kernel=kernel_size, stride=1)
@@ -891,15 +896,19 @@ def _get_trunk_cfg(arch_def):
 
 class FBNet(nn.Module):
     def __init__(
-        self, builder, arch_def, dim_in, cnt_classes=1000
+        self, builder, arch_def, dim_in, cnt_classes=1000, fnp=False
     ):
         super(FBNet, self).__init__()
         self.first = builder.add_first(arch_def["first"], dim_in=dim_in)
         trunk_cfg = _get_trunk_cfg(arch_def)
-        self.stages = builder.add_blocks(trunk_cfg["stages"])
+        self.stages, self.params = builder.add_blocks(trunk_cfg["stages"])
         self.last_stages = builder.add_last_states(cnt_classes)
         self.cnt_classes = cnt_classes
-    
+	
+        if fnp==False:
+            del(self.params)
+        
+
     def forward(self, x):
         y = self.first(x)
         y = self.stages(y)
@@ -940,12 +949,12 @@ class FBNet(nn.Module):
         print('last stage : ', flops3)
         return accumlated_flops
 
-def get_model(arch, cnt_classes):
+def get_model(arch, cnt_classes,fnp ):
     # for reload updated arch
     importlib.reload(fbnet_modeldef)
     assert arch in fbnet_modeldef.MODEL_ARCH
     arch_def = fbnet_modeldef.MODEL_ARCH[arch]
     arch_def = unify_arch_def(arch_def)
     builder = FBNetBuilder(width_ratio=1.0, bn_type="bn", width_divisor=8, dw_skip_bn=True, dw_skip_relu=True)
-    model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes)
+    model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes,fnp=fnp)
     return model
