@@ -150,7 +150,7 @@ class TrainerSupernet:
         top1_acc = self.top1
         losses = self.losses
         
-        for avg in [self.top1, self.top3, self.losses]:
+        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops]:
             avg.reset()
         
         return top1_acc, losses
@@ -183,7 +183,7 @@ class TrainerSupernet:
                 
         top1_avg = self.top1.get_avg()
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, val_or_train='val')
-        for avg in [self.top1, self.top3, self.losses]:
+        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops]:
             avg.reset()
         return top1_avg
     
@@ -191,7 +191,7 @@ class TrainerSupernet:
         self.writer.add_scalar('train_vs_val/'+val_or_train+'_loss'+info_for_logger, self.losses.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/'+val_or_train+'_top1'+info_for_logger, self.top1.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/'+val_or_train+'_top3'+info_for_logger, self.top3.get_avg(), epoch)
-        self.writer.add_scalar('train_vs_val/'+val_or_train+'_losses_flops'+info_for_logger, self.losses_flops.get_avg(), epoch)
+        self.writer.add_scalar('train_vs_val/'+val_or_train+'_\'+info_for_logger, self.losses_flops.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/'+val_or_train+'_losses_ce'+info_for_logger, self.losses_ce.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/' + val_or_train + '_flops' + info_for_logger,
                                self.flops.get_avg(), epoch)
