@@ -179,7 +179,7 @@ def check_flops():
 
 
 if __name__ == "__main__":
-    assert args.train_or_sample in ['train', 'sample', 'train_sample', 'flops']
+    assert args.train_or_sample in ['train', 'sample', 'flops']
     if args.train_or_sample == 'train':
         train_supernet()
 
