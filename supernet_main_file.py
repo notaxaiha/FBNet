@@ -31,12 +31,14 @@ parser.add_argument('--hardsampling_bool_value', type=str, default='True', \
                     help='If not False or 0 -> do hardsampling, else - softmax sampling')
 parser.add_argument('--quantization', type=str, default='', \
                     help='quantization yaml file path')
+
+# dataset , lambda, warmup steps, epochs,
 args = parser.parse_args()
 
 yaml_path = ''
 
 def train_supernet():
-    manual_seed = 472
+    manual_seed = args.seed
 
     os.environ['PYTHONHASHSEED'] = str(manual_seed)
     random.seed(manual_seed)
@@ -49,7 +51,7 @@ def train_supernet():
     torch.backends.cudnn.benchmark = False
 
     create_directories_from_list([CONFIG_SUPERNET['logging']['path_to_tensorboard_logs']])
-    
+
     logger = get_logger(CONFIG_SUPERNET['logging']['path_to_log_file'])
     writer = SummaryWriter(log_dir=CONFIG_SUPERNET['logging']['path_to_tensorboard_logs'])
     
@@ -186,20 +188,6 @@ if __name__ == "__main__":
         hardsampling = False if args.hardsampling_bool_value in ['False', '0'] else True
         sample_architecture_from_the_supernet(unique_name_of_arch=args.architecture_name, hardsampling=hardsampling)
 
-    elif args.train_or_sample == 'train_sample':
-        assert True
-        assert args.architecture_name != '' and args.architecture_name not in MODEL_ARCH
-        train_supernet()
-
-        hardsampling = False if args.hardsampling_bool_value in ['False', '0'] else True
-        sample_architecture_from_the_supernet(unique_name_of_arch=args.architecture_name, hardsampling=hardsampling)
-
-        # MODEL_ARCH update
-        model = fbnet_builder.get_model(args.architecture_name, cnt_classes=10).cuda()
-        model = model.apply(weights_init)
-        
-        torch.save(model,f"{args.architecture_name}.pth")
-        torch.save(model.state_dict(), f"{args.architecture_name}_dict.pth")
 
     elif args.train_or_sample == 'flops':
         check_flops()
