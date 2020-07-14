@@ -121,7 +121,8 @@ class SupernetLoss(nn.Module):
         self.weight_criterion = nn.CrossEntropyLoss()
         self.reg_loss_type= CONFIG_SUPERNET['loss']['reg_loss_type']
         # self.ref_value = 300 * 1e6
-        self.ref_value = 300 * 1e6 * 0.1
+        # self.ref_value = 300 * 1e6 * 0.1
+        self.ref_value = 30 * 1e6 # * 0.1
 
     
     def forward(self, outs, targets, flops_to_accumulate, losses_ce, losses_flops, flops , N):
@@ -151,7 +152,7 @@ class SupernetLoss(nn.Module):
             # print(reg_loss)
             losses_flops.update(reg_loss.item(), N)
 
-            return ce_loss # + reg_loss
+            return ce_loss + reg_loss
 
         # loss = ce # self.alpha * ce * lat
         # return loss #.unsqueeze(0)

@@ -34,7 +34,7 @@ CONFIG_SUPERNET = {
         'reg_loss_type' : 'add#linear'  # 'add#linear', 'mul#log'
     },
     'train_settings' : {
-        'cnt_epochs' : 180, # 90
+        'cnt_epochs' : 600, # 90
         'train_thetas_from_the_epoch' : 10,
         'print_freq' : 50,
         'path_to_save_model' : './supernet_functions/logs/best_model.pth',

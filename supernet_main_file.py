@@ -57,7 +57,7 @@ def train_supernet():
                                   CONFIG_SUPERNET['dataloading']['path_to_save_data'])
     
     #### Model
-    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
+    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
     # model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
@@ -98,7 +98,7 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
     logger = get_logger(CONFIG_SUPERNET['logging']['path_to_log_file'])
     
     lookup_table = LookUpTable()
-    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
+    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
     model = nn.DataParallel(model)
 
     load(model, CONFIG_SUPERNET['train_settings']['path_to_save_model'])

@@ -107,7 +107,7 @@ class TrainerSupernet:
             self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader), val_or_train="Train")
         
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, info_for_logger=info_for_logger, val_or_train='train')
-        for avg in [self.top1, self.top3, self.losses]:
+        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops]:
             avg.reset()
 
     def _check_flops(self, model, input_var):
@@ -141,7 +141,7 @@ class TrainerSupernet:
                 
         top1_avg = self.top1.get_avg()
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, val_or_train='val')
-        for avg in [self.top1, self.top3, self.losses]:
+        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self. losses_ce, self.flops]:
             avg.reset()
         return top1_avg
     
