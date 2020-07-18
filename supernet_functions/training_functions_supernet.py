@@ -17,8 +17,12 @@ import distiller.models as models
 from distiller.utils import float_range_argparse_checker as float_range
 from distiller_utils.distiller_utils import delete_float_w
 
+from os.path import join, dirname
+
 class TrainerSupernet:
-    def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer, check_flops=False, comp_scheduler=None):
+    def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
+                 temperature, exp_annedl_rate, epoch,  train_thetas_from_the_epoch, print_freq,
+                 check_flops=False, comp_scheduler=None, path_to_save_model=None):
         self.top1       = AverageMeter()
         self.top3       = AverageMeter()
         self.losses     = AverageMeter()
@@ -35,13 +39,14 @@ class TrainerSupernet:
         self.w_scheduler = w_scheduler
         self.check_flops = check_flops
         
-        self.temperature                 = CONFIG_SUPERNET['train_settings']['init_temperature']
-        self.exp_anneal_rate             = CONFIG_SUPERNET['train_settings']['exp_anneal_rate'] # apply it every epoch
-        self.cnt_epochs                  = CONFIG_SUPERNET['train_settings']['cnt_epochs']
+        self.temperature                 = temperature
+        self.exp_anneal_rate             = exp_annedl_rate # apply it every epoch
+        self.cnt_epochs                  = epoch
 
-        self.train_thetas_from_the_epoch = CONFIG_SUPERNET['train_settings']['train_thetas_from_the_epoch']
-        self.print_freq                  = CONFIG_SUPERNET['train_settings']['print_freq']
-        self.path_to_save_model          = CONFIG_SUPERNET['train_settings']['path_to_save_model']
+        self.train_thetas_from_the_epoch = train_thetas_from_the_epoch
+        self.print_freq                  = print_freq
+        # self.path_to_save_model          = CONFIG_SUPERNET['train_settings']['path_to_save_model']
+        self.path_to_save_model          = path_to_save_model
 
         self.comp_scheduler = comp_scheduler
 
@@ -98,7 +103,7 @@ class TrainerSupernet:
 
                 self.temperature = self.temperature * self.exp_anneal_rate
 
-            pd.DataFrame(all_theta_list).to_csv('./supernet_functions/logs/theatas.csv')
+            pd.DataFrame(all_theta_list).to_csv(join( dirname(self.path_to_save_model), 'theatas.csv'))
 
 
 

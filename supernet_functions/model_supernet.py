@@ -113,16 +113,16 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         return y, flops_list
     
 class SupernetLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, alpha, beta, reg_lambda, reg_loss_type, ref_value = 30 * 1e6, apply_flop_loss=True) :
         super(SupernetLoss, self).__init__()
-        self.alpha = CONFIG_SUPERNET['loss']['alpha']
-        self.beta = CONFIG_SUPERNET['loss']['beta']
-        self.reg_lambda = CONFIG_SUPERNET['loss']['reg_lambda']
+        self.alpha = alpha
+        self.beta = beta
+        self.reg_lambda = reg_lambda
         self.weight_criterion = nn.CrossEntropyLoss()
-        self.reg_loss_type= CONFIG_SUPERNET['loss']['reg_loss_type']
+        self.reg_loss_type= reg_loss_type
         # self.ref_value = 300 * 1e6
-        self.ref_value = 300 * 1e6 * 0.1
-        self.apply_flop_loss = True
+        self.ref_value = ref_value
+        self.apply_flop_loss = apply_flop_loss
 
     
     def forward(self, outs, targets, flops_to_accumulate, losses_ce, losses_flops, flops , N):
