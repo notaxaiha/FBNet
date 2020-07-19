@@ -79,9 +79,9 @@ parser.add_argument('--data_split', type=float, default=0.8, \
                     help="split dataset for weight, theta (x : 1-x)")
 
 # TODO : warmup stage and gumbel scheduling
-parser.add_argument('--max_t', type=float, default=5, \
+parser.add_argument('--eta_max', type=float, default=5, \
                     help="max gumbel tau value")
-parser.add_argument('--min_t', type=float, default=3, \
+parser.add_argument('--eta_min', type=float, default=None, \
                     help="TODO - min gumbel tau value")
 parser.add_argument('--exp_anneal_rate', type=float, default=np.exp(-0.045), \
                     help="TODO - flop loss's (reg)lambda value")
@@ -176,7 +176,7 @@ def train_supernet():
 
     #### training loop
     trainer = TrainerSupernet(criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
-                              temperature=args.max_t, exp_annedl_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              temperature=args.eta_max, min_temperature=args.eta_max, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               comp_scheduler=comp_scheduler, path_to_save_model=join(save_path, 'best_model.pth'))
     trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model)
@@ -242,7 +242,7 @@ def check_flops():
 
     #### training loop
     trainer = TrainerSupernet(None, None, None, None, None, None, check_flops=True,
-                              temperature=args.max_t, exp_annedl_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               path_to_save_model=join(curdir, 'searched_result', args.architecture_name,
                                                       'supernet_function_logs', 'best_model.pth'))

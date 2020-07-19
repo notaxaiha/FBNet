@@ -142,8 +142,6 @@ class SupernetLoss(nn.Module):
         if self.apply_flop_loss == False:
             losses_ce.update(ce_loss.item(), N)
             return ce_loss
-        
-        # TODO - FLops loss
 
         # print(flops_to_accumulate)
 
