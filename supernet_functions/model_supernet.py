@@ -31,7 +31,9 @@ class MixedOperation(nn.Module):
 
     # update get Flops for data
     def get_flops(self, x, temperature):
-        soft_mask_variables = nn.functional.gumbel_softmax(self.thetas, temperature)
+        # soft_mask_variables = nn.functional.gumbel_softmax(self.thetas, temperature)
+
+        soft_mask_variables = self.get_gumbel_prob(temperature)
 
         # print(self.ops)
         output = sum(m * op(x) for m, op in zip(soft_mask_variables, self.ops))
@@ -39,6 +41,15 @@ class MixedOperation(nn.Module):
         self.flops = [op.get_flops(x)[0] for op in self.ops]
 
         return output
+
+    # gumbel softmax function
+    def get_gumbel_prob(self, tau):
+        gumbels = -torch.empty_like(self.thetas).exponential_().log()
+        logits = (self.thetas.log_softmax(dim=-1) + gumbels) / tau
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+
+        return probs
+
 
 class FBNet_Stochastic_SuperNet(nn.Module):
     def __init__(self, lookup_table, cnt_classes=1000):
