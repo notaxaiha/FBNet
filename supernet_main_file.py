@@ -176,7 +176,7 @@ def train_supernet():
 
     #### training loop
     trainer = TrainerSupernet(criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
-                              temperature=args.eta_max, min_temperature=args.eta_max, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               comp_scheduler=comp_scheduler, path_to_save_model=join(save_path, 'best_model.pth'))
     trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model)

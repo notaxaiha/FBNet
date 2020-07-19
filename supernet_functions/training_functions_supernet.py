@@ -50,10 +50,11 @@ class TrainerSupernet:
 
         self.comp_scheduler = comp_scheduler
 
-        if min_temperature != None :
-            self.gumbel_scheduler = CosineAnnealingTau(self.temperature, min_temperature, self.cnt_epochs)
-
-        else :
+        if min_temperature is not None:
+            self.gumbel_scheduler = CosineAnnealingTau(self.temperature, min_temperature,
+                                                       self.cnt_epochs - self.train_thetas_from_the_epoch)
+            self.exp_anneal_rate = None
+        else:
             self.gumbel_scheduler = None
             self.exp_anneal_rate = exp_anneal_rate  # apply it every epoch
 
@@ -81,7 +82,7 @@ class TrainerSupernet:
 
                 self.logger.info("Start to train weights for epoch %d" % (epoch))
                 top1, losses = self._training_step(model, train_w_loader, self.w_optimizer, epoch,
-                                                   info_for_logger="_w_step_")
+                                                  info_for_logger="_w_step_")
 
                 if self.comp_scheduler:
                     self.comp_scheduler.on_epoch_end(epoch, self.w_optimizer, metrics={'min': losses, 'max': top1})
@@ -90,7 +91,7 @@ class TrainerSupernet:
 
                 self.logger.info("Start to train theta for epoch %d" % (epoch))
                 self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch,
-                                    info_for_logger="_theta_step_")
+                                  info_for_logger="_theta_step_")
 
                 theta_list = []
                 for i in range(17):
@@ -106,10 +107,11 @@ class TrainerSupernet:
                     save(model, self.path_to_save_model)
 
                 self.writer.add_scalar('temperature', self.temperature, epoch)
-                if self.gumbel_scheduler == None:
+                if self.gumbel_scheduler is None:
                     self.temperature = self.temperature * self.exp_anneal_rate
                 else:
-                    self.temperature = self.gumbel_scheduler.get_lr(current_epoch=epoch - self.train_thetas_from_the_epoch)
+                    self.temperature = self.gumbel_scheduler.get_lr(
+                        current_epoch=epoch - self.train_thetas_from_the_epoch)
 
             pd.DataFrame(all_theta_list).to_csv(join(dirname(self.path_to_save_model), 'theatas.csv'))
 
@@ -238,6 +240,7 @@ class CosineAnnealingTau:
         self.lr = eta_max
 
     def get_lr(self, current_epoch):
-        self.lr = self.eta_min + (self.eta_max - self.eta_min) * (1 + math.cos(math.pi * current_epoch / self.T_max)) / 2
+        self.lr = self.eta_min + (self.eta_max - self.eta_min) * (
+                1 + math.cos(math.pi * current_epoch / self.T_max)) / 2
 
         return self.lr
