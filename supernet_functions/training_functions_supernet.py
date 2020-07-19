@@ -238,6 +238,6 @@ class CosineAnnealingTau:
         self.lr = eta_max
 
     def get_lr(self, current_epoch):
-        self.lr = self.eta_min + (self.eta_max - self.eta_min) * (1 + math.cos(math.pi * current_epoch / 180)) / 2
+        self.lr = self.eta_min + (self.eta_max - self.eta_min) * (1 + math.cos(math.pi * current_epoch / self.T_max)) / 2
 
         return self.lr
