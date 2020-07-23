@@ -11,7 +11,7 @@
 - 2. architecture sampling
 - 3. make sampled model ./{arch_name}.pth (architecture train X)
 
-- [ ] TODO : custom Module(IRF Block) => torch.nn function 
+
 
 
 
