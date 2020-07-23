@@ -123,7 +123,7 @@ def main():
 
         return
 
-    model = nn.DataParallel(model, [0])])
+    model = nn.DataParallel(model, [0])
 
     #### Loss and Optimizer
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()),
