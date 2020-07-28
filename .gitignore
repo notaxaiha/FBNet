@@ -153,4 +153,6 @@ searched_result
 # csv file
 *.csv
 
+# sh file
+*.sh
 
