@@ -5,7 +5,7 @@ from tensorboardX import SummaryWriter
 import argparse
 import os
 import random
-from os.path import join, curdir
+from os.path import join, curdir, isdir, exists
 
 from general_functions.dataloaders import get_loaders, get_test_loader
 from general_functions.utils import get_logger, weights_init, create_directories_from_list
@@ -15,6 +15,9 @@ from architecture_functions.config_for_arch import CONFIG_ARCH
 from distiller_utils.distiller_utils import convert_model_to_quant
 
 from torchsummary import summary
+
+from shutil import copytree, copy, rmtree
+
 
 parser = argparse.ArgumentParser("architecture")
 
@@ -77,6 +80,19 @@ def main():
     torch.backends.cudnn.benchmark = False
 
     save_path = join(curdir, 'searched_result', args.architecture_name, 'architecture_function_logs')
+
+    # copy code for search architecture
+    for file in code_list:
+        if isdir(join(curdir, file)):
+            if exists(join(save_path, 'code', file)):
+                rmtree(join(save_path, 'code', file))
+
+            copytree(join(curdir, file), join(save_path, 'code', file))
+        else:
+            if exists(join(save_path, 'code', file)):
+                os.remove(join(save_path, 'code', file))
+
+            copy(join(curdir, file), join(save_path, 'code', file))
 
     create_directories_from_list([join(save_path, 'tb'),
                                   join(save_path, 'code')])
