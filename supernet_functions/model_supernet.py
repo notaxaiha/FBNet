@@ -20,8 +20,12 @@ class MixedOperation(nn.Module):
         self.thetas = nn.Parameter(torch.Tensor([1.0 / len(ops_names) for i in range(len(ops_names))]))
 
     def forward(self, x, temperature, flops_to_accumulate):
-        soft_mask_variables = nn.functional.gumbel_softmax(self.thetas, temperature)
-
+        # old_gumbel
+        # soft_mask_variables = nn.functional.gumbel_softmax(self.thetas, temperature)
+        
+        # new_gumbel
+        soft_mask_variables = self.get_gumbel_prob(temperature)
+        
         output  = sum(m * op(x) for m, op in zip(soft_mask_variables, self.ops))
         # latency = sum(m * lat for m, lat in zip(soft_mask_variables, self.latency))
 
