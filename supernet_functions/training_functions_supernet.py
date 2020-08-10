@@ -204,7 +204,7 @@ class TrainerSupernet:
         self.writer.add_scalar('train_vs_val/' + val_or_train + '_loss' + info_for_logger, self.losses.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/' + val_or_train + '_top1' + info_for_logger, self.top1.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/' + val_or_train + '_top3' + info_for_logger, self.top3.get_avg(), epoch)
-        self.writer.add_scalar('train_vs_val/' + val_or_train + '_\'+info_for_logger', self.losses_flops.get_avg(),
+        self.writer.add_scalar('train_vs_val/' + val_or_train + '_losses_flops' + info_for_logger, self.losses_flops.get_avg(),
                                epoch)
         self.writer.add_scalar('train_vs_val/' + val_or_train + '_losses_ce' + info_for_logger,
                                self.losses_ce.get_avg(), epoch)
