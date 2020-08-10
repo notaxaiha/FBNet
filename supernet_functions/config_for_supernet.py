@@ -6,7 +6,8 @@ CONFIG_SUPERNET = {
     },
     'lookup_table' : {
         'create_from_scratch' : False,
-        'path_to_lookup_table' : './supernet_functions/lookup_table.txt',
+        'path_to_lookup_table' : './supernet_functions/lookup_table_simple.txt',
+        #'path_to_lookup_table' : './supernet_functions/lookup_table.txt',
         'number_of_runs' : 15 # each operation run number_of_runs times and then we will take average
     },
     'logging' : {
@@ -14,7 +15,8 @@ CONFIG_SUPERNET = {
         'path_to_tensorboard_logs' : './supernet_functions/logs/tb'
     },
     'dataloading' : {
-        'batch_size' : 200,
+        'batch_size' : 8,
+        #'batch_size' : 200,
         'w_share_in_train' : 0.8,
         'path_to_save_data' : './cifar10_data'
     },
@@ -30,11 +32,12 @@ CONFIG_SUPERNET = {
     'loss' : {
         'alpha' : 0.2,
         'beta' : 0.3,
-        'reg_lambda' : 1e-1,
+        'reg_lambda' : 0,
         'reg_loss_type' : 'add#linear'  # 'add#linear', 'mul#log'
     },
     'train_settings' : {
-        'cnt_epochs' : 180, # 90
+        'cnt_epochs' : 40, # 90
+        #'cnt_epochs' : 180, # 90
         'train_thetas_from_the_epoch' : 0,
         'print_freq' : 50,
         'path_to_save_model' : './supernet_functions/logs/best_model.pth',

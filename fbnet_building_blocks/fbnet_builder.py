@@ -192,6 +192,16 @@ PRIMITIVES = {
     "ir_k7_sep_e6": lambda C_in, C_out, expansion, stride, **kwargs: IRFBlock(
         C_in, C_out, 6, stride, kernel=7, cdw=True, **kwargs
     ),
+    # for SimpleNet
+    "s_k3": lambda C_in, C_out, expansion, stride, **kwargs: Simple(
+        C_in, C_out, stride, kernel=3
+    ),
+    "s_k5": lambda C_in, C_out, expansion, stride, **kwargs: Simple(
+        C_in, C_out, stride, kernel=5
+    ),
+    "s_k7": lambda C_in, C_out, expansion, stride, **kwargs: Simple(
+        C_in, C_out, stride, kernel=7
+    ),
 }
 
 
@@ -202,6 +212,44 @@ class Flatten(nn.Module):
     def forward(self, x):
         shape = torch.prod(torch.tensor(x.shape[1:])).item()
         return x.view(-1, shape)
+
+
+class Simple(nn.Module):
+    def __init__(self, C_in, C_out, stride, kernel):
+        super(Simple, self).__init__()
+        self.output_depth = C_out # ANNA's code here
+        self.conv = (
+            ConvBNRelu(
+                C_in,
+                C_out,
+                kernel=kernel,
+                stride=stride,
+                pad=(kernel // 2),
+                no_bias=1,
+                use_relu="relu",
+                bn_type="bn",
+            )
+            if C_in != C_out or stride != 1
+            else None
+        )
+
+    def forward(self, x):
+        if self.conv:
+            out = self.conv(x)
+        else:
+            out = x
+        return out
+
+    def get_flops(self, x):
+
+        if self.conv:
+            # self.flops = 0
+            self.flops = count_conv_flop(self.conv, x)
+            out = self.conv(x)
+        else:
+            self.flops = 0
+            out = x
+        return self.flops, out
 
 
 class Identity(nn.Module):

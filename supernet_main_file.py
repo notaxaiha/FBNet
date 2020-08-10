@@ -20,7 +20,7 @@ from distiller_utils.distiller_utils import convert_model_to_quant
 import fbnet_building_blocks.fbnet_builder as fbnet_builder
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 parser = argparse.ArgumentParser("action")
 parser.add_argument('--train_or_sample', type=str, default='', \
@@ -88,6 +88,8 @@ def train_supernet():
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
     print(model)
+    
+
     #### Loss, Optimizer and Scheduler
     criterion = SupernetLoss().cuda()
     criterion.apply_flop_loss = False

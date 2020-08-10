@@ -81,7 +81,8 @@ class TrainerSupernet:
                 self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch, info_for_logger="_theta_step_")
 
                 theta_list = []
-                for i in range(17):
+                for i in range(2):
+                #for i in range(17):
 
                     temp_list = self.theta_optimizer.param_groups[0]['params'][i].tolist()
                     theta_list.append(temp_list)

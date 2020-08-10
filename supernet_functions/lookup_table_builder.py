@@ -8,6 +8,17 @@ from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 
 # the settings from the page 4 of https://arxiv.org/pdf/1812.03443.pdf
 #### table 2
+CANDIDATE_BLOCKS = ["s_k3", "s_k5", "s_k7"]
+SEARCH_SPACE = OrderedDict([
+    ("input_shape", [(32, 32, 32),
+                     (160, 32, 32)]),
+    ("channel_size", [160,
+                      320]),
+    ("strides", [1,
+                 1])
+])
+
+'''
 CANDIDATE_BLOCKS = ["ir_k3_e1", "ir_k3_s2", "ir_k3_e3",
                     "ir_k3_e6", "ir_k5_e1", "ir_k5_s2",
                     "ir_k5_e3", "ir_k5_e6", "skip"]
@@ -58,6 +69,7 @@ SEARCH_SPACE = OrderedDict([
     #              2, 1, 1,
     #              1])
 ])
+'''
 
 # **** to recalculate latency use command:
 # l_table = LookUpTable(calulate_latency=True, path_to_file='lookup_table.txt', cnt_of_runs=50)
