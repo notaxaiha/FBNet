@@ -7,7 +7,7 @@ from architecture_functions.config_for_arch import CONFIG_ARCH
 from distiller_utils.distiller_utils import delete_float_w
 
 class TrainerArch:
-    def __init__(self, criterion, optimizer, scheduler, logger, writer, comp_scheduler):
+    def __init__(self, criterion, optimizer, scheduler, logger, writer, comp_scheduler, path_to_save_model, epoch, print_freq):
         self.top1   = AverageMeter()
         self.top3   = AverageMeter()
         self.losses = AverageMeter()
@@ -19,9 +19,11 @@ class TrainerArch:
         self.criterion = criterion
         self.scheduler = scheduler
         
-        self.path_to_save_model = CONFIG_ARCH['train_settings']['path_to_save_model']
-        self.cnt_epochs         = CONFIG_ARCH['train_settings']['cnt_epochs']
-        self.print_freq         = CONFIG_ARCH['train_settings']['print_freq']
+        # self.path_to_save_model = CONFIG_ARCH['train_settings']['path_to_save_model']
+        self.path_to_save_model = path_to_save_model
+
+        self.cnt_epochs = epoch
+        self.print_freq = print_freq
         
         self.comp_scheduler = comp_scheduler
         
