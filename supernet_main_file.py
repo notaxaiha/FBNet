@@ -78,6 +78,10 @@ parser.add_argument('--batch', type=int, default=128, \
 parser.add_argument('--data_split', type=float, default=0.8, \
                     help="split dataset for weight, theta (x : 1-x)")
 
+# evalation setting
+parser.add_argument('--eval_mode', type=str, default=None, \
+                    help="select evalution method. (default) None(same with training) / sampling")
+
 # TODO : warmup stage and gumbel scheduling
 parser.add_argument('--eta_max', type=float, default=5, \
                     help="max gumbel tau value")
@@ -179,7 +183,7 @@ def train_supernet():
                               temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               comp_scheduler=comp_scheduler, path_to_save_model=join(save_path, 'best_model.pth'))
-    trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model)
+    trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model, args.eval_mode)
 
 
 # arguments:

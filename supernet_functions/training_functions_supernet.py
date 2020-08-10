@@ -58,7 +58,7 @@ class TrainerSupernet:
             self.gumbel_scheduler = None
             self.exp_anneal_rate = exp_anneal_rate  # apply it every epoch
 
-    def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model):
+    def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model, eval_mode):
 
         best_top1 = 0.0
 
@@ -100,7 +100,7 @@ class TrainerSupernet:
 
                 all_theta_list.append([theta_list, self.temperature])
 
-                top1_avg = self._validate(model, test_loader, epoch)
+                top1_avg = self._validate(model, test_loader, epoch, eval_mode)
                 if best_top1 < top1_avg:
                     best_top1 = top1_avg
                     self.logger.info("Best top1 acc by now. Save model")
@@ -178,7 +178,7 @@ class TrainerSupernet:
 
         return flops_list
 
-    def _validate(self, model, loader, epoch):
+    def _validate(self, model, loader, epoch, eval_mode=None):
         model.eval()
         start_time = time.time()
 
@@ -188,7 +188,7 @@ class TrainerSupernet:
                 N = X.shape[0]
 
                 flops_to_accumulate = torch.Tensor([[0.0]]).cuda()
-                outs, flops_to_accumulate = model(X, self.temperature, flops_to_accumulate)
+                outs, flops_to_accumulate = model(X, self.temperature, flops_to_accumulate, eval_mode=eval_mode)
                 loss = self.criterion(outs, y, flops_to_accumulate, self.losses_ce, self.losses_flops, self.flops, N)
 
                 self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader),

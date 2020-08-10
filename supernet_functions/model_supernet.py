@@ -19,13 +19,23 @@ class MixedOperation(nn.Module):
         # self.flops = [1 for op_name in ops_names]
         self.thetas = nn.Parameter(torch.Tensor([1.0 / len(ops_names) for i in range(len(ops_names))]))
 
-    def forward(self, x, temperature, flops_to_accumulate):
+    def forward(self, x, temperature, flops_to_accumulate, eval_mode=None):
         # old_gumbel
         # soft_mask_variables = nn.functional.gumbel_softmax(self.thetas, temperature)
         
         # new_gumbel
-        soft_mask_variables = self.get_gumbel_prob(temperature)
         
+         
+        if eval_mode == 'sampling':
+            # mask
+            
+            soft_mask_variables = torch.zeros(len(self.thetas))
+            soft_mask_variables[torch.argmax(self.thetas)] = 1
+            soft_mask_variables = soft_mask_variables.cuda()
+            # print(soft_mask_variables)
+        else:
+            soft_mask_variables = self.get_gumbel_prob(temperature)
+
         output  = sum(m * op(x) for m, op in zip(soft_mask_variables, self.ops))
         # latency = sum(m * lat for m, lat in zip(soft_mask_variables, self.latency))
 
@@ -99,13 +109,13 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         del data_shape, x, last_conv_temp
 
     
-    def forward(self, x, temperature, flops_to_accumulate):
+    def forward(self, x, temperature, flops_to_accumulate, eval_mode=None):
         y = self.first(x)
         # add flops from first layer
         flops_to_accumulate += self.first.get_flops(x, only_flops=True)
 
         for mixed_op in self.stages_to_search:
-            y, flops_to_accumulate = mixed_op(y, temperature, flops_to_accumulate)
+            y, flops_to_accumulate = mixed_op(y, temperature, flops_to_accumulate, eval_mode)
         y = self.last_stages(y)
 
         # add flops from last stage
