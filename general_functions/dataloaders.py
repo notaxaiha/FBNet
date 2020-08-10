@@ -8,15 +8,22 @@ import os
 CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
 CIFAR_STD  = [0.2023, 0.1994, 0.2010]
 
-def get_loaders(train_portion, batch_size, path_to_save_data, logger):
+def get_loaders(train_portion, batch_size, path_to_save_data, dataset):
     train_transform = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
         ])
-    train_data = datasets.CIFAR10(root=path_to_save_data, train=True, 
-                                  download=True, transform=train_transform)
+
+    if dataset == 'cifar10':
+
+        train_data = datasets.CIFAR10(root=path_to_save_data, train=True,
+                                      download=True, transform=train_transform)
+    elif dataset == 'cifar100':
+
+        train_data = datasets.CIFAR100(root=path_to_save_data, train=True,
+                                      download=True, transform=train_transform)
 
     num_train = len(train_data)                        # 50k
     indices = list(range(num_train))                   # 
@@ -41,14 +48,21 @@ def get_loaders(train_portion, batch_size, path_to_save_data, logger):
     
     return train_loader, val_loader
     
-def get_test_loader(batch_size, path_to_save_data):
+def get_test_loader(batch_size, path_to_save_data, dataset):
     test_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
         ])
-    
-    test_data = datasets.CIFAR10(root=path_to_save_data, train=False,
-                                 download=True, transform=test_transform)
+
+    if dataset == 'cifar10':
+
+        test_data = datasets.CIFAR10(root=path_to_save_data, train=False,
+                                      download=True, transform=test_transform)
+    elif dataset == 'cifar100':
+
+        test_data = datasets.CIFAR100(root=path_to_save_data, train=False,
+                                      download=True, transform=test_transform)
+
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size,
                                               shuffle=False, num_workers=16)
     return test_loader

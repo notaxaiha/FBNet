@@ -14,7 +14,7 @@ CONFIG_SUPERNET = {
         'path_to_tensorboard_logs' : './supernet_functions/logs/tb'
     },
     'dataloading' : {
-        'batch_size' : 200,
+        'batch_size' : 128, # 200,
         'w_share_in_train' : 0.8,
         'path_to_save_data' : './cifar10_data'
     },
@@ -22,7 +22,7 @@ CONFIG_SUPERNET = {
         # SGD parameters for w
         'w_lr' : 0.1,
         'w_momentum' : 0.9,
-        'w_weight_decay' : 2e-4,
+        'w_weight_decay' : 1e-4, # 2e-4,
         # Adam parameters for thetas
         'thetas_lr' : 0.01,
         'thetas_weight_decay' : 5 * 1e-4

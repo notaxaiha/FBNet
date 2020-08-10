@@ -20,7 +20,7 @@ CONFIG_ARCH = {
         # YOU COULD USE 'CosineAnnealingLR' or 'MultiStepLR' scheduler
         'scheduler' : 'CosineAnnealingLR', #MultiStepLR',
         ## CosineAnnealingLR settings
-        'eta_min' : 0.0001,
+        'eta_min' : 0.001,
         ## MultiStepLR settings
         'milestones' : [90, 180, 270], # [90, 180, 270], # decay 10x at 90, 180, and 270 epochs
         'lr_decay' : 0.1
