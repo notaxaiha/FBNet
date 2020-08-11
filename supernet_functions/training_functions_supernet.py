@@ -17,12 +17,14 @@ import distiller.models as models
 from distiller.utils import float_range_argparse_checker as float_range
 from distiller_utils.distiller_utils import delete_float_w
 
+import numpy as np
+
 from os.path import join, dirname
 
 
 class TrainerSupernet:
     def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
-                 temperature, min_temperature, exp_anneal_rate, epoch, train_thetas_from_the_epoch, print_freq,
+                 tau_scheduling,temperature, min_temperature, exp_anneal_rate, epoch, train_thetas_from_the_epoch, print_freq,
                  check_flops=False, comp_scheduler=None, path_to_save_model=None):
         self.top1 = AverageMeter()
         self.top3 = AverageMeter()
@@ -30,6 +32,7 @@ class TrainerSupernet:
         self.losses_flops = AverageMeter()
         self.losses_ce = AverageMeter()
         self.flops = AverageMeter()
+        self.params = AverageMeter()
 
         self.logger = logger
         self.writer = writer
@@ -50,13 +53,29 @@ class TrainerSupernet:
 
         self.comp_scheduler = comp_scheduler
 
-        if min_temperature is not None:
+        # exponentioal scheduling mode
+        if tau_scheduling == 'exp':
+            self.gumbel_scheduler = None
+
+            # e ** exp_anneal_rate - exponential scheduling 
+            if min_temperature == None:
+                self.exp_anneal_rate = exp_anneal_rate  # apply it every epoch
+
+            # max => min - exponential scheduling
+            else :
+                # print(min_temperature, temperature, self.cnt_epochs, self.train_thetas_from_the_epoch)
+                self.exp_anneal_rate = (math.log(min_temperature) - math.log(temperature)) / (self.cnt_epochs - self.train_thetas_from_the_epoch)
+                self.exp_anneal_rate = np.exp(self.exp_anneal_rate)
+        # cosine annealing scheduling mode
+        elif tau_scheduling == 'cos':
             self.gumbel_scheduler = CosineAnnealingTau(self.temperature, min_temperature,
                                                        self.cnt_epochs - self.train_thetas_from_the_epoch)
             self.exp_anneal_rate = None
-        else:
-            self.gumbel_scheduler = None
-            self.exp_anneal_rate = exp_anneal_rate  # apply it every epoch
+
+        # others option 
+        else :
+            return None
+
 
     def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model, eval_mode):
 
@@ -132,8 +151,10 @@ class TrainerSupernet:
                 self.comp_scheduler.on_minibatch_begin(epoch, step, steps_per_epoch, optimizer)
 
             flops_to_accumulate = Variable(torch.Tensor([[0.0]]), requires_grad=True).cuda()
-            outs, flops_to_accumulate = model(X, self.temperature, flops_to_accumulate)
-            loss = self.criterion(outs, y, flops_to_accumulate, self.losses_ce, self.losses_flops, self.flops, N)
+            params_to_accumulate = Variable(torch.Tensor([[0.0]])).cuda()
+            
+            outs, flops_to_accumulate, params_to_accumulate = model(X, self.temperature, flops_to_accumulate, params_to_accumulate)
+            loss = self.criterion(outs, y, flops_to_accumulate, params_to_accumulate, self.losses_ce, self.losses_flops, self.flops, self.params, N)
 
             if self.comp_scheduler:
                 agg_loss = self.comp_scheduler.before_backward_pass(epoch, step, steps_per_epoch, loss,
@@ -162,7 +183,7 @@ class TrainerSupernet:
         top1_acc = self.top1
         losses = self.losses
 
-        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops]:
+        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops, self.params]:
             avg.reset()
 
         return top1_acc, losses
@@ -188,15 +209,16 @@ class TrainerSupernet:
                 N = X.shape[0]
 
                 flops_to_accumulate = torch.Tensor([[0.0]]).cuda()
-                outs, flops_to_accumulate = model(X, self.temperature, flops_to_accumulate, eval_mode=eval_mode)
-                loss = self.criterion(outs, y, flops_to_accumulate, self.losses_ce, self.losses_flops, self.flops, N)
+                params_to_accumulate = torch.Tensor([[0.0]]).cuda()
+                outs, flops_to_accumulate, params_to_accumulate = model(X, self.temperature, flops_to_accumulate, params_to_accumulate, eval_mode=eval_mode)
+                loss = self.criterion(outs, y, flops_to_accumulate, params_to_accumulate, self.losses_ce, self.losses_flops, self.flops, self.params, N)
 
                 self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader),
                                                  val_or_train="Valid")
 
         top1_avg = self.top1.get_avg()
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, val_or_train='val')
-        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops]:
+        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops, self.params]:
             avg.reset()
         return top1_avg
 
@@ -210,6 +232,8 @@ class TrainerSupernet:
                                self.losses_ce.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/' + val_or_train + '_flops' + info_for_logger,
                                self.flops.get_avg(), epoch)
+        self.writer.add_scalar('train_vs_val/' + val_or_train + '_params' + info_for_logger,
+                               self.params.get_avg(), epoch)
 
         top1_avg = self.top1.get_avg()
         self.logger.info(info_for_logger + val_or_train + ": [{:3d}/{}] Final Prec@1 {:.4%} Time {:.2f}".format(

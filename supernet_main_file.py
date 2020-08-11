@@ -83,6 +83,8 @@ parser.add_argument('--eval_mode', type=str, default=None, \
                     help="select evalution method. (default) None(same with training) / sampling")
 
 # TODO : warmup stage and gumbel scheduling
+parser.add_argument('--tau_scheduling', type=str, default='exp', \
+                    help="tau scheduling mode - choose 'exp' (default) or 'cos'.")
 parser.add_argument('--eta_max', type=float, default=5, \
                     help="max gumbel tau value")
 parser.add_argument('--eta_min', type=float, default=None, \
@@ -164,7 +166,7 @@ def train_supernet():
 
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
-    print(model)
+    # print(model)
     #### loss, optimizer and scheduler
     criterion = SupernetLoss(reg_loss_type=args.reg_loss_type, alpha=args.alpha, beta=args.beta,
                              reg_lambda=args.reg_lambda, ref_value=args.ref_value).cuda()
@@ -180,7 +182,7 @@ def train_supernet():
 
     #### training loop
     trainer = TrainerSupernet(criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
-                              temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              tau_scheduling=args.tau_scheduling ,temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               comp_scheduler=comp_scheduler, path_to_save_model=join(save_path, 'best_model.pth'))
     trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model, args.eval_mode)
@@ -246,7 +248,7 @@ def check_flops():
 
     #### training loop
     trainer = TrainerSupernet(None, None, None, None, None, None, check_flops=True,
-                              temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              tau_scheduling=args.tau_scheduling, temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               path_to_save_model=join(curdir, 'searched_result', args.architecture_name,
                                                       'supernet_function_logs', 'best_model.pth'))
