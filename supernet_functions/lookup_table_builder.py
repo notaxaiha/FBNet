@@ -68,7 +68,7 @@ SEARCH_SPACE = OrderedDict([
 # TODO - flops change
 class LookUpTable:
     def __init__(self, candidate_blocks=CANDIDATE_BLOCKS, search_space=SEARCH_SPACE,
-                 calulate_latency=False):
+                 calulate_latency=False, path='./supernet_functions/lookup_table.txt'):
         self.cnt_layers = len(search_space["input_shape"])
         # constructors for each operation
         self.lookup_table_operations = {op_name : PRIMITIVES[op_name] for op_name in candidate_blocks}
@@ -84,7 +84,7 @@ class LookUpTable:
         # else:
         #     self._create_from_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'])
         #
-        self._create_from_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'])
+        self._create_from_file(path_to_file=path)
 
     def _generate_layers_parameters(self, search_space):
         # layers_parameters are : C_in, C_out, expansion, stride

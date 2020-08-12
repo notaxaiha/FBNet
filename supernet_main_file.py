@@ -88,9 +88,15 @@ parser.add_argument('--tau_scheduling', type=str, default='exp', \
 parser.add_argument('--eta_max', type=float, default=5, \
                     help="max gumbel tau value")
 parser.add_argument('--eta_min', type=float, default=None, \
-                    help="TODO - min gumbel tau value")
+                    help="min gumbel tau value")
 parser.add_argument('--exp_anneal_rate', type=float, default=np.exp(-0.045), \
-                    help="TODO - flop loss's (reg)lambda value")
+                    help="flops loss (reg)lambda value")
+
+# Lookup Table - 
+parser.add_argument('--params_LUT_path', type=str, default='./supernet_functions/params_lookup_table.txt', \
+                    help="saved params lookup table path")
+parser.add_argument('--flops_LUT_path', type=str, default='./supernet_functions/lookup_table.txt', \
+                    help="saved flops lookup table path")
 
 # dataset , lambda, warmup steps, epochs,
 args = parser.parse_args()
@@ -128,7 +134,8 @@ def train_supernet():
     writer = SummaryWriter(log_dir=join(save_path, 'tb'))
 
     #### lookup table consists all information about layers
-    lookup_table = LookUpTable(calulate_latency=CONFIG_SUPERNET['lookup_table']['create_from_scratch'])
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
 
     #### dataloading
     train_w_loader, train_thetas_loader = get_loaders(args.data_split,
