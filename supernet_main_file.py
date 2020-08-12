@@ -98,6 +98,9 @@ parser.add_argument('--params_LUT_path', type=str, default='./supernet_functions
 parser.add_argument('--flops_LUT_path', type=str, default='./supernet_functions/lookup_table.txt', \
                     help="saved flops lookup table path")
 
+# dataset
+parser.add_argument('--dataset_path', type=str, default='./cifar10_data', \
+                    help="saved dataset path")
 # dataset , lambda, warmup steps, epochs,
 args = parser.parse_args()
 
@@ -135,15 +138,15 @@ def train_supernet():
 
     #### lookup table consists all information about layers
     lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
-    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
+    # params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
 
     #### dataloading
     train_w_loader, train_thetas_loader = get_loaders(args.data_split,
                                                       args.batch,
-                                                      CONFIG_SUPERNET['dataloading']['path_to_save_data'],
+                                                      args.dataset_path,
                                                       dataset=args.dataset)
     test_loader = get_test_loader(args.batch,
-                                  CONFIG_SUPERNET['dataloading']['path_to_save_data'],
+                                  args.dataset_path,
                                   dataset=args.dataset)
 
     #### model
@@ -242,7 +245,7 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
 
 def check_flops():
     #### lookup table consists all information about layers
-    lookup_table = LookUpTable(calulate_latency=CONFIG_SUPERNET['lookup_table']['create_from_scratch'])
+    lookup_table = LookUpTable(calulate_latency=False)
 
     #### dataloading
     data_shape = [1, 3, 32, 32]
@@ -261,7 +264,7 @@ def check_flops():
                                                       'supernet_function_logs', 'best_model.pth'))
     flops_list = trainer.train_loop(None, None, input_var, model)
 
-    lookup_table.write_lookup_table_to_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'],
+    lookup_table.write_lookup_table_to_file(path_to_file=args.flops_LUT_path,
                                             flops_list=flops_list)
 
 
