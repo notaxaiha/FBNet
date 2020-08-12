@@ -11,7 +11,7 @@ class MixedOperation(nn.Module):
     # Arguments:
     # proposed_operations is a dictionary {operation_name : op_constructor}
     # latency is a dictionary {operation_name : latency}
-    def __init__(self, layer_parameters, proposed_operations, flops):
+    def __init__(self, layer_parameters, proposed_operations, flops, params):
         super(MixedOperation, self).__init__()
         ops_names = [op_name for op_name in proposed_operations]
         
@@ -21,7 +21,8 @@ class MixedOperation(nn.Module):
         # self.flops = [1 for op_name in ops_names]
         self.thetas = nn.Parameter(torch.Tensor([1.0 / len(ops_names) for i in range(len(ops_names))]))
 
-        self.params= self.get_params()
+        # self.params= self.get_params()
+        self.params= [params[op_name] for op_name in ops_names]
 
 
     def forward(self, x, temperature, flops_to_accumulate, params_to_accumulate, eval_mode=None):
@@ -87,7 +88,7 @@ class MixedOperation(nn.Module):
 
 
 class FBNet_Stochastic_SuperNet(nn.Module):
-    def __init__(self, lookup_table, cnt_classes=1000):
+    def __init__(self, lookup_table, params_lookup_table, cnt_classes=1000):
         super(FBNet_Stochastic_SuperNet, self).__init__()
 
         data_shape = [1, 3, 32, 32]
@@ -104,12 +105,13 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         self.first_params = sum(p.numel() for p in self.first.parameters() if p.requires_grad)
         
         # print(self.first_flops)
-        print(self.first_params)
+        # print(self.first_params)
 
         self.stages_to_search = nn.ModuleList([MixedOperation(
                                                    lookup_table.layers_parameters[layer_id],
                                                    lookup_table.lookup_table_operations,
-                                                   lookup_table.lookup_table_flops[layer_id])
+                                                   lookup_table.lookup_table_flops[layer_id],
+                                                   params_lookup_table.lookup_table_flops[layer_id])
                                                for layer_id in range(lookup_table.cnt_layers)])
         self.last_stages = nn.Sequential(OrderedDict([
             ("conv_k1", nn.Conv2d(lookup_table.layers_parameters[-1][1], 1280, kernel_size = 1)),
@@ -134,7 +136,7 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         self.last_stages_params = sum(p.numel() for p in self.last_stages.parameters() if p.requires_grad)
         
         # print(self.last_stages_flops)
-        print(self.last_stages_params)
+        # print(self.last_stages_params)
         del data_shape, x, last_conv_temp
 
     
@@ -158,6 +160,7 @@ class FBNet_Stochastic_SuperNet(nn.Module):
     # TODO -
     def get_flops(self, x, temperature):
         flops_list = []
+        params_list = []
 
         y = self.first(x)
         for mixed_op in self.stages_to_search:
@@ -166,8 +169,12 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         for mixed_op in self.stages_to_search:
 
             flops_list.append(mixed_op.flops)
+            params_list.append(mixed_op.get_params())
+            print('flops', mixed_op.flops)
+            print('params', mixed_op.get_params())
+
         y = self.last_stages(y)
-        return y, flops_list
+        return y, flops_list, params_list
     
 class SupernetLoss(nn.Module):
     def __init__(self, alpha, beta, reg_lambda, reg_loss_type, ref_value = 30 * 1e6, apply_flop_loss=True) :

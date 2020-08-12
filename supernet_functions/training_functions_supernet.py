@@ -77,15 +77,15 @@ class TrainerSupernet:
             return None
 
 
-    def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model, eval_mode):
+    def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model, eval_mode=None):
 
         best_top1 = 0.0
 
         all_theta_list = []
 
         if self.check_flops == True:
-            flops_list = self._check_flops(model, test_loader)
-            return flops_list
+            flops_list, params_list = self._check_flops(model, test_loader)
+            return flops_list, params_list
 
         else:
             for epoch in range(self.train_thetas_from_the_epoch):
@@ -195,9 +195,9 @@ class TrainerSupernet:
         # X.to(device, non_blocking=True), y.to(device, non_blocking=True)
 
         # optimizer.zero_grad()
-        _, flops_list = model.get_flops(input_var, self.temperature)
+        _, flops_list, params_list = model.get_flops(input_var, self.temperature)
 
-        return flops_list
+        return flops_list, params_list
 
     def _validate(self, model, loader, epoch, eval_mode=None):
         model.eval()

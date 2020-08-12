@@ -138,7 +138,7 @@ def train_supernet():
 
     #### lookup table consists all information about layers
     lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
-    # params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
 
     #### dataloading
     train_w_loader, train_thetas_loader = get_loaders(args.data_split,
@@ -152,9 +152,9 @@ def train_supernet():
     #### model
 
     if args.dataset == 'cifar10':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=100).cuda()
 
     thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
@@ -206,12 +206,13 @@ def train_supernet():
 def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True):
     logger = get_logger(join(curdir, 'searched_result', args.architecture_name, 'supernet_function_logs', 'logger'))
 
-    lookup_table = LookUpTable()
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
 
     if args.dataset == 'cifar10':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table,  cnt_classes=100).cuda()
 
     if args.quantization:
         w_optimizer = None
@@ -245,15 +246,16 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
 
 def check_flops():
     #### lookup table consists all information about layers
-    lookup_table = LookUpTable(calulate_latency=False)
-
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
+    
     #### dataloading
     data_shape = [1, 3, 32, 32]
     # data_shape = [1, 3, 224, 224]
     input_var = torch.zeros(data_shape).cuda()
 
     #### model
-    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+    model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     model = model.apply(weights_init)
 
     #### training loop
@@ -262,12 +264,14 @@ def check_flops():
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               path_to_save_model=join(curdir, 'searched_result', args.architecture_name,
                                                       'supernet_function_logs', 'best_model.pth'))
-    flops_list = trainer.train_loop(None, None, input_var, model)
+    flops_list, params_list = trainer.train_loop(None, None, input_var, model)
 
     lookup_table.write_lookup_table_to_file(path_to_file=args.flops_LUT_path,
                                             flops_list=flops_list)
 
-
+    params_lookup_table.write_lookup_table_to_file(path_to_file=args.params_LUT_path,
+                                            flops_list=params_list)
+    print(params_list)
 if __name__ == "__main__":
 
     # set gpu number to use
