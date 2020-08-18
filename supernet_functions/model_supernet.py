@@ -25,14 +25,14 @@ class MixedOperation(nn.Module):
         self.params= [params[op_name] for op_name in ops_names]
 
 
-    def forward(self, x, temperature, flops_to_accumulate, params_to_accumulate, eval_mode=None):
+    def forward(self, x, temperature, flops_to_accumulate, params_to_accumulate, sampling_mode=None):
         # old_gumbel
         # soft_mask_variables = nn.functional.gumbel_softmax(self.thetas, temperature)
         
         # new_gumbel
         
          
-        if eval_mode == 'sampling':
+        if sampling_mode == 'sampling':
             # mask
             
             soft_mask_variables = torch.zeros(len(self.thetas))
@@ -140,14 +140,14 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         del data_shape, x, last_conv_temp
 
     
-    def forward(self, x, temperature, flops_to_accumulate, params_to_accumulate, eval_mode=None):
+    def forward(self, x, temperature, flops_to_accumulate, params_to_accumulate, sampling_mode=None):
         y = self.first(x)
         # add flops from first layer
         flops_to_accumulate += self.first.get_flops(x, only_flops=True)
         params_to_accumulate = self.first_params
 
         for mixed_op in self.stages_to_search:
-            y, flops_to_accumulate, params_to_accumulate = mixed_op(y, temperature, flops_to_accumulate, params_to_accumulate, eval_mode)
+            y, flops_to_accumulate, params_to_accumulate = mixed_op(y, temperature, flops_to_accumulate, params_to_accumulate, sampling_mode)
         y = self.last_stages(y)
 
         # add flops from last stage

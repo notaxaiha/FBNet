@@ -77,6 +77,10 @@ parser.add_argument('--batch', type=int, default=128, \
                     help="set batch size")
 parser.add_argument('--data_split', type=float, default=0.8, \
                     help="split dataset for weight, theta (x : 1-x)")
+parser.add_argument('--w_training_mode', type=str, default=None, \
+                    help="select evalution method. (default) None(same with training) / sampling")
+parser.add_argument('--theta_training_mode', type=str, default=None, \
+                    help="select evalution method. (default) None(same with training) / sampling")
 
 # evalation setting
 parser.add_argument('--eval_mode', type=str, default=None, \
@@ -91,6 +95,8 @@ parser.add_argument('--eta_min', type=float, default=None, \
                     help="min gumbel tau value")
 parser.add_argument('--exp_anneal_rate', type=float, default=np.exp(-0.045), \
                     help="flops loss (reg)lambda value")
+parser.add_argument('--warmup_mode', type=str, default=None, \
+                    help="select evalution method. (default) None(same with training) / sampling")
 
 # Lookup Table - 
 parser.add_argument('--params_LUT_path', type=str, default='./supernet_functions/params_lookup_table.txt', \
@@ -182,6 +188,9 @@ def train_supernet():
                              reg_lambda=args.reg_lambda, ref_value=args.ref_value).cuda()
     criterion.apply_flop_loss = args.apply_flop_loss
 
+    # define how to sample the model at each stage(warmup, training, eval)
+    sampling_mode = [args.warmup_mode, args.w_training_mode, args.theta_training_mode, args.eval_mode]
+
     # thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     # params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
 
@@ -195,7 +204,7 @@ def train_supernet():
                               tau_scheduling=args.tau_scheduling ,temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               comp_scheduler=comp_scheduler, path_to_save_model=join(save_path, 'best_model.pth'))
-    trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model, args.eval_mode)
+    trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model, sampling_mode)
 
 
 # arguments:
