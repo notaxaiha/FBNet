@@ -1,4 +1,5 @@
 import torch
+import random
 from torch import nn
 from collections import OrderedDict
 from fbnet_building_blocks.fbnet_builder import ConvBNRelu, Flatten
@@ -30,19 +31,33 @@ class MixedOperation(nn.Module):
         # soft_mask_variables = nn.functional.gumbel_softmax(self.thetas, temperature)
         
         # new_gumbel
-        
-         
-        if sampling_mode == 'sampling':
-            # mask
-            
+        if sampling_mode == 'sampling_valid':
+            # argmax_one_hot mask (for valid)
             soft_mask_variables = torch.zeros(len(self.thetas))
             soft_mask_variables[torch.argmax(self.thetas)] = 1
             soft_mask_variables = soft_mask_variables.cuda()
-            # print(soft_mask_variables)
-        else:
+        elif sampling_mode == 'sampling_train':
+            # argmax_one_hot mask (for train)
             soft_mask_variables = self.get_gumbel_prob(temperature)
-        
+            #print(soft_mask_variables)
+            soft_mask_variables = torch.zeros(len(self.thetas))
+            soft_mask_variables[torch.argmax(self.thetas)] = 1
+            soft_mask_variables = soft_mask_variables.cuda()
+        elif sampling_mode == 'random_sampling' :
+            # random_one_hot mask
+            soft_mask_variables = torch.zeros(len(self.thetas))
+            soft_mask_variables[int(random.random() * 9)] = 1
+            soft_mask_variables = soft_mask_variables.cuda()
+        elif sampling_mode == 'sum' :
+            # sum mask
+            soft_mask_variables = torch.ones(len(self.thetas))
+            soft_mask_variables = soft_mask_variables.cuda()
+        else: 
+            # weighted sum
+            soft_mask_variables = self.get_gumbel_prob(temperature)
+            
         output  = sum(m * op(x) for m, op in zip(soft_mask_variables, self.ops))
+
         # latency = sum(m * lat for m, lat in zip(soft_mask_variables, self.latency))
 
         flops = sum(m * flop for m, flop in zip(soft_mask_variables, self.flops))

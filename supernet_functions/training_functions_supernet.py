@@ -97,6 +97,7 @@ class TrainerSupernet:
                 self.logger.info("Firstly, start to train weights for epoch %d" % (epoch))
                 self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_", sampling_mode=sampling_mode[0])
                 self.w_scheduler.step()
+                
 
             for epoch in range(self.train_thetas_from_the_epoch, self.cnt_epochs):
                 self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
@@ -158,7 +159,7 @@ class TrainerSupernet:
             
             outs, flops_to_accumulate, params_to_accumulate = model(X, self.temperature, flops_to_accumulate, params_to_accumulate, sampling_mode=sampling_mode)
             loss = self.criterion(outs, y, flops_to_accumulate, params_to_accumulate, self.losses_ce, self.losses_flops, self.flops, self.params, N)
-
+            
             if self.comp_scheduler:
                 agg_loss = self.comp_scheduler.before_backward_pass(epoch, step, steps_per_epoch, loss,
                                                                     optimizer=optimizer, return_loss_components=True)
