@@ -136,7 +136,7 @@ class TrainerSupernet:
                     self.temperature = self.gumbel_scheduler.get_lr(
                         current_epoch=epoch - self.train_thetas_from_the_epoch)
 
-            pd.DataFrame(all_theta_list).to_csv(join(dirname(self.path_to_save_model), 'theatas.csv'))
+            pd.DataFrame(all_theta_list).to_csv(join(dirname(self.path_to_save_model), 'thetas.csv'))
 
     def _training_step(self, model, loader, optimizer, epoch, info_for_logger="", sampling_mode=None):
         model = model.train()
