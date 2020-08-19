@@ -39,9 +39,8 @@ class MixedOperation(nn.Module):
         elif sampling_mode == 'sampling_train':
             # argmax_one_hot mask (for train)
             soft_mask_variables = self.get_gumbel_prob(temperature)
-            #print(soft_mask_variables)
-            soft_mask_variables = torch.zeros(len(self.thetas))
-            soft_mask_variables[torch.argmax(self.thetas)] = 1
+            soft_mask_variables = torch.zeros(len(soft_mask_variables))
+            soft_mask_variables[torch.argmax(soft_mask_variables)] = 1
             soft_mask_variables = soft_mask_variables.cuda()
         elif sampling_mode == 'random_sampling' :
             # random_one_hot mask
