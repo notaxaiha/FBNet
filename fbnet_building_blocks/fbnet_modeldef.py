@@ -407,7 +407,7 @@ MODEL_ARCH = {
             },
     "m2_orig": {
             "block_op_type": [
-            ["ir_k3_e6"],
+            ["ir_k3_e1"],
             ["ir_k3_e6"], ["ir_k3_e6"],
             ["ir_k3_e6"], ["ir_k3_e6"], ["ir_k3_e6"],
             ["ir_k3_e6"], ["ir_k3_e6"], ["ir_k3_e6"], ["ir_k3_e6"],
