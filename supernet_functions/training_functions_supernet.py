@@ -24,7 +24,7 @@ from os.path import join, dirname
 
 class TrainerSupernet:
     def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
-                 tau_scheduling,temperature, min_temperature, exp_anneal_rate, epoch, train_thetas_from_the_epoch, print_freq,
+                 tau_scheduling,temperature, min_temperature, exp_anneal_rate, N_step, reg_tau, epoch, train_thetas_from_the_epoch, print_freq,
                  check_flops=False, comp_scheduler=None, path_to_save_model=None):
         self.top1 = AverageMeter()
         self.top3 = AverageMeter()
@@ -44,7 +44,7 @@ class TrainerSupernet:
         self.check_flops = check_flops
 
         self.temperature = temperature
-
+        
         self.cnt_epochs = epoch
         self.train_thetas_from_the_epoch = train_thetas_from_the_epoch
         self.print_freq = print_freq
@@ -53,6 +53,8 @@ class TrainerSupernet:
 
         self.comp_scheduler = comp_scheduler
 
+        self.global_training_step = None
+        
         # exponentioal scheduling mode
         if tau_scheduling == 'exp':
             self.gumbel_scheduler = None
@@ -72,8 +74,18 @@ class TrainerSupernet:
                                                        self.cnt_epochs - self.train_thetas_from_the_epoch)
             self.exp_anneal_rate = None
 
-        # others option 
-        else :
+        # gumbel softmax original scheduling mode
+        elif tau_scheduling == 'orig':
+            self.temperature = 1.0
+            self.global_training_step = 0
+            self.N_step = N_step
+            self.reg_tau = reg_tau
+
+            # flag for skip warmup step
+            self.after_warmup = False
+
+        # others option
+        else:
             return None
 
 
@@ -99,10 +111,14 @@ class TrainerSupernet:
                 self.w_scheduler.step()
                 
 
+            if self.global_training_step is not None:
+                self.after_warmup = True
+
             for epoch in range(self.train_thetas_from_the_epoch, self.cnt_epochs):
                 self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
                 self.writer.add_scalar('learning_rate/theta', self.theta_optimizer.param_groups[0]['lr'], epoch)
 
+                # training weight step
                 self.logger.info("Start to train weights for epoch %d" % (epoch))
                 top1, losses = self._training_step(model, train_w_loader, self.w_optimizer, epoch,
                                                   info_for_logger="_w_step_", sampling_mode=sampling_mode[1])
@@ -112,6 +128,7 @@ class TrainerSupernet:
                 else:
                     self.w_scheduler.step()
 
+                # training theta step
                 self.logger.info("Start to train theta for epoch %d" % (epoch))
                 self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch,
                                   info_for_logger="_theta_step_", sampling_mode=sampling_mode[2])
@@ -130,8 +147,16 @@ class TrainerSupernet:
                     save(model, self.path_to_save_model)
 
                 self.writer.add_scalar('temperature', self.temperature, epoch)
-                if self.gumbel_scheduler is None:
+
+                # original tau scheduling - update on training steps
+                if self.global_training_step is not None:
+                    continue
+
+                # fbnet exponential tau scheduling
+                elif self.gumbel_scheduler is None:
                     self.temperature = self.temperature * self.exp_anneal_rate
+
+                # cosine annealing scheduling
                 else:
                     self.temperature = self.gumbel_scheduler.get_lr(
                         current_epoch=epoch - self.train_thetas_from_the_epoch)
@@ -180,6 +205,16 @@ class TrainerSupernet:
 
             self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader),
                                              val_or_train="Train")
+
+            # original tau scheuduling - step update
+            if self.global_training_step is not None and self.after_warmup == True:
+                self.global_training_step += 1
+
+                # update every N_step
+                if self.global_training_step % self.N_step == 0:
+                    self.temperature = max(0.5, np.exp(-1 * self.reg_tau * self.global_training_step))
+
+
 
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, info_for_logger=info_for_logger,
                                   val_or_train='train')

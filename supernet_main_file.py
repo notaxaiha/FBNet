@@ -88,13 +88,18 @@ parser.add_argument('--eval_mode', type=str, default=None, \
 
 # TODO : warmup stage and gumbel scheduling
 parser.add_argument('--tau_scheduling', type=str, default='exp', \
-                    help="tau scheduling mode - choose 'exp' (default) or 'cos'.")
+                    help="tau scheduling mode - choose 'exp' (default) or 'cos' or 'orig'.")
 parser.add_argument('--eta_max', type=float, default=5, \
                     help="max gumbel tau value")
 parser.add_argument('--eta_min', type=float, default=None, \
                     help="min gumbel tau value")
 parser.add_argument('--exp_anneal_rate', type=float, default=np.exp(-0.045), \
                     help="flops loss (reg)lambda value")
+# for original scheduling
+parser.add_argument('--reg_tau', type=float, default=1e-5, \
+                    help="origianl scheduling. reg value for tau - you must choose 1e-5(default) or 1e-4.")
+parser.add_argument('--N_step', type=float, default=500, \
+                    help="origianl scheduling. update evety N step - you must choose 500(default) or 1000.")
 parser.add_argument('--warmup_mode', type=str, default=None, \
                     help="select evalution method. (default) None(same with training) / sampling")
 
@@ -201,7 +206,7 @@ def train_supernet():
 
     #### training loop
     trainer = TrainerSupernet(criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
-                              tau_scheduling=args.tau_scheduling ,temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              tau_scheduling=args.tau_scheduling ,temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, N_step=args.N_step, reg_tau=args.reg_tau, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               comp_scheduler=comp_scheduler, path_to_save_model=join(save_path, 'best_model.pth'))
     trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model, sampling_mode)
@@ -269,7 +274,7 @@ def check_flops():
 
     #### training loop
     trainer = TrainerSupernet(None, None, None, None, None, None, check_flops=True,
-                              tau_scheduling=args.tau_scheduling, temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              tau_scheduling=args.tau_scheduling, temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, N_step=args.N_step, reg_tau=args.reg_tau, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               path_to_save_model=join(curdir, 'searched_result', args.architecture_name,
                                                       'supernet_function_logs', 'best_model.pth'))
