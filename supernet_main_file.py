@@ -77,19 +77,41 @@ parser.add_argument('--batch', type=int, default=128, \
                     help="set batch size")
 parser.add_argument('--data_split', type=float, default=0.8, \
                     help="split dataset for weight, theta (x : 1-x)")
+parser.add_argument('--w_training_mode', type=str, default=None, \
+                    help="select evalution method. (default) None(same with training) / sampling")
+parser.add_argument('--theta_training_mode', type=str, default=None, \
+                    help="select evalution method. (default) None(same with training) / sampling")
 
 # evalation setting
 parser.add_argument('--eval_mode', type=str, default=None, \
                     help="select evalution method. (default) None(same with training) / sampling")
 
 # TODO : warmup stage and gumbel scheduling
+parser.add_argument('--tau_scheduling', type=str, default='exp', \
+                    help="tau scheduling mode - choose 'exp' (default) or 'cos' or 'orig'.")
 parser.add_argument('--eta_max', type=float, default=5, \
                     help="max gumbel tau value")
 parser.add_argument('--eta_min', type=float, default=None, \
-                    help="TODO - min gumbel tau value")
+                    help="min gumbel tau value")
 parser.add_argument('--exp_anneal_rate', type=float, default=np.exp(-0.045), \
-                    help="TODO - flop loss's (reg)lambda value")
+                    help="flops loss (reg)lambda value")
+# for original scheduling
+parser.add_argument('--reg_tau', type=float, default=1e-5, \
+                    help="origianl scheduling. reg value for tau - you must choose 1e-5(default) or 1e-4.")
+parser.add_argument('--N_step', type=float, default=500, \
+                    help="origianl scheduling. update evety N step - you must choose 500(default) or 1000.")
+parser.add_argument('--warmup_mode', type=str, default=None, \
+                    help="select evalution method. (default) None(same with training) / sampling")
 
+# Lookup Table - 
+parser.add_argument('--params_LUT_path', type=str, default='./supernet_functions/params_lookup_table.txt', \
+                    help="saved params lookup table path")
+parser.add_argument('--flops_LUT_path', type=str, default='./supernet_functions/lookup_table.txt', \
+                    help="saved flops lookup table path")
+
+# dataset
+parser.add_argument('--dataset_path', type=str, default='./cifar10_data', \
+                    help="saved dataset path")
 # dataset , lambda, warmup steps, epochs,
 args = parser.parse_args()
 
@@ -126,23 +148,24 @@ def train_supernet():
     writer = SummaryWriter(log_dir=join(save_path, 'tb'))
 
     #### lookup table consists all information about layers
-    lookup_table = LookUpTable(calulate_latency=CONFIG_SUPERNET['lookup_table']['create_from_scratch'])
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
 
     #### dataloading
     train_w_loader, train_thetas_loader = get_loaders(args.data_split,
                                                       args.batch,
-                                                      CONFIG_SUPERNET['dataloading']['path_to_save_data'],
+                                                      args.dataset_path,
                                                       dataset=args.dataset)
     test_loader = get_test_loader(args.batch,
-                                  CONFIG_SUPERNET['dataloading']['path_to_save_data'],
+                                  args.dataset_path,
                                   dataset=args.dataset)
 
     #### model
 
     if args.dataset == 'cifar10':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=100).cuda()
 
     thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
@@ -164,11 +187,14 @@ def train_supernet():
 
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
-    print(model)
+    # print(model)
     #### loss, optimizer and scheduler
     criterion = SupernetLoss(reg_loss_type=args.reg_loss_type, alpha=args.alpha, beta=args.beta,
                              reg_lambda=args.reg_lambda, ref_value=args.ref_value).cuda()
     criterion.apply_flop_loss = args.apply_flop_loss
+
+    # define how to sample the model at each stage(warmup, training, eval)
+    sampling_mode = [args.warmup_mode, args.w_training_mode, args.theta_training_mode, args.eval_mode]
 
     # thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     # params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
@@ -180,10 +206,10 @@ def train_supernet():
 
     #### training loop
     trainer = TrainerSupernet(criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
-                              temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              tau_scheduling=args.tau_scheduling ,temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, N_step=args.N_step, reg_tau=args.reg_tau, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               comp_scheduler=comp_scheduler, path_to_save_model=join(save_path, 'best_model.pth'))
-    trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model, args.eval_mode)
+    trainer.train_loop(train_w_loader, train_thetas_loader, test_loader, model, sampling_mode)
 
 
 # arguments:
@@ -194,12 +220,13 @@ def train_supernet():
 def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True):
     logger = get_logger(join(curdir, 'searched_result', args.architecture_name, 'supernet_function_logs', 'logger'))
 
-    lookup_table = LookUpTable()
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
 
     if args.dataset == 'cifar10':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table,  cnt_classes=100).cuda()
 
     if args.quantization:
         w_optimizer = None
@@ -233,29 +260,32 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
 
 def check_flops():
     #### lookup table consists all information about layers
-    lookup_table = LookUpTable(calulate_latency=CONFIG_SUPERNET['lookup_table']['create_from_scratch'])
-
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
+    
     #### dataloading
     data_shape = [1, 3, 32, 32]
     # data_shape = [1, 3, 224, 224]
     input_var = torch.zeros(data_shape).cuda()
 
     #### model
-    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+    model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     model = model.apply(weights_init)
 
     #### training loop
     trainer = TrainerSupernet(None, None, None, None, None, None, check_flops=True,
-                              temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, epoch=args.epoch,
+                              tau_scheduling=args.tau_scheduling, temperature=args.eta_max, min_temperature=args.eta_min, exp_anneal_rate=args.exp_anneal_rate, N_step=args.N_step, reg_tau=args.reg_tau, epoch=args.epoch,
                               train_thetas_from_the_epoch=args.warm_up, print_freq=args.print_freq,
                               path_to_save_model=join(curdir, 'searched_result', args.architecture_name,
                                                       'supernet_function_logs', 'best_model.pth'))
-    flops_list = trainer.train_loop(None, None, input_var, model)
+    flops_list, params_list = trainer.train_loop(None, None, input_var, model)
 
-    lookup_table.write_lookup_table_to_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'],
+    lookup_table.write_lookup_table_to_file(path_to_file=args.flops_LUT_path,
                                             flops_list=flops_list)
 
-
+    params_lookup_table.write_lookup_table_to_file(path_to_file=args.params_LUT_path,
+                                            flops_list=params_list)
+    print(params_list)
 if __name__ == "__main__":
 
     # set gpu number to use
