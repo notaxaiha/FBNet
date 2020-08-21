@@ -202,6 +202,16 @@ PRIMITIVES = {
     "s_k7": lambda C_in, C_out, expansion, stride, **kwargs: Simple(
         C_in, C_out, stride, kernel=7
     ),
+    # for ResNet
+    "r_k3": lambda C_in, C_out, expansion, stride, **kwargs: ResidualPreAct(
+        C_in, C_out, stride, kernel=3
+    ),
+    "r_k5": lambda C_in, C_out, expansion, stride, **kwargs: ResidualPreAct(
+        C_in, C_out, stride, kernel=5
+    ),
+    "r_k7": lambda C_in, C_out, expansion, stride, **kwargs: ResidualPreAct(
+        C_in, C_out, stride, kernel=7
+    ),
 }
 
 
@@ -212,6 +222,44 @@ class Flatten(nn.Module):
     def forward(self, x):
         shape = torch.prod(torch.tensor(x.shape[1:])).item()
         return x.view(-1, shape)
+
+
+class ResidualPreAct():
+    def __init__(self, C_in, C_out, stride, kernel):
+        super(ResidualPreAct, self).__init__()
+        self.output_depth = C_out 
+        self.conv = (
+            ConvBNRelu(
+                C_in,
+                C_out,
+                kernel=kernel,
+                stride=stride,
+                pad=(kernel // 2),
+                no_bias=1,
+                use_relu="relu",
+                bn_type="bn",
+            )
+            if C_in != C_out or stride != 1
+            else None
+        )
+
+    def forward(self, x):
+        if self.conv:
+            out = self.conv(x)
+        else:
+            out = x
+        return out
+
+    def get_flops(self, x):
+        if self.conv:
+            # self.flops = 0
+            self.flops = count_conv_flop(self.conv, x)
+            out = self.conv(x)
+        else:
+            self.flops = 0
+            out = x
+        return self.flops, out
+
 
 
 class Simple(nn.Module):
@@ -241,7 +289,6 @@ class Simple(nn.Module):
         return out
 
     def get_flops(self, x):
-
         if self.conv:
             # self.flops = 0
             self.flops = count_conv_flop(self.conv, x)
@@ -409,6 +456,88 @@ class ChannelShuffle(nn.Module):
             .contiguous()
             .view(N, C, H, W)
         )
+
+'''
+class ResidualPreAct():
+    def __init__{
+    ):
+        super(ResidualUnit, self).__init__()
+
+        temp1 = BNReluConv(x)
+        temp2 = BNReluConv(temp1)
+        out = x = temp2
+'''
+
+
+class BNReluConv(nn.Sequential):
+    def __init__(
+        self,
+        input_depth,
+        output_depth,
+        kernel,
+        stride,
+        pad,
+        no_bias,
+        use_relu,
+        bn_type,
+        group=1,
+        *args,
+        **kwargs
+    ):
+        super(BNReluConv, self).__init__()
+
+        assert use_relu in ["relu", None]
+        if isinstance(bn_type, (list, tuple)):
+            assert len(bn_type) == 2
+            assert bn_type[0] == "gn"
+            gn_group = bn_type[1]
+            bn_type = bn_type[0]
+        assert bn_type in ["bn", "af", "gn", None]
+        assert stride in [1, 2, 4]
+        # for flops calculation
+
+        self.stride = (stride, stride)
+        self.in_channels = input_depth
+        self.out_channels = output_depth
+        self.kernel_size = (kernel, kernel)
+        self.groups = group
+
+
+        self.conv = Conv2d(
+            input_depth,
+            output_depth,
+            kernel_size=kernel,
+            stride=stride,
+            padding=pad,
+            bias=not no_bias,
+            groups=group,
+            *args,
+            **kwargs
+        )
+        nn.init.kaiming_normal_(self.conv.weight, mode="fan_out", nonlinearity="relu")
+        if self.conv.bias is not None:
+            nn.init.constant_(self.conv.bias, 0.0)
+        # self.add_module("conv", self.op)
+
+        self.bn = None
+        if bn_type == "bn":
+            self.bn = BatchNorm2d(output_depth)
+        elif bn_type == "gn":
+            self.bn = nn.GroupNorm(num_groups=gn_group, num_channels=output_depth)
+        elif bn_type == "af":
+            self.bn = FrozenBatchNorm2d(output_depth)
+        # if bn_type is not None:
+            # self.add_module("bn", self.bn_op)
+
+        self.relu = None
+        if use_relu == "relu":
+            self.relu = nn.ReLU(inplace=True)
+            # self.add_module("relu",  self.activation)
+
+    def get_flops(self, x, only_flops=False):
+
+        return 0
+
 
 
 class ConvBNRelu(nn.Sequential):
@@ -790,6 +919,9 @@ def unify_arch_def(arch_def):
     assert "block_op_type" in arch_def
     _add_to_arch(ret["stages"], arch_def["block_op_type"], "block_op_type")
     del ret["block_op_type"]
+    
+    print('--jieun:(type):', type(ret))
+    print('--jieun: ret:', ret)
 
     return ret
 
@@ -989,6 +1121,16 @@ class FBNet(nn.Module):
         return accumlated_flops
 
 def get_model(arch, cnt_classes):
+    # for reload updated arch
+    importlib.reload(fbnet_modeldef)
+    assert arch in fbnet_modeldef.MODEL_ARCH
+    arch_def = fbnet_modeldef.MODEL_ARCH[arch]
+    arch_def = unify_arch_def(arch_def)
+    builder = FBNetBuilder(width_ratio=1.0, bn_type="bn", width_divisor=8, dw_skip_bn=True, dw_skip_relu=True)
+    model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes)
+    return model
+
+def get_model_simple(arch, cnt_classes):
     # for reload updated arch
     importlib.reload(fbnet_modeldef)
     assert arch in fbnet_modeldef.MODEL_ARCH

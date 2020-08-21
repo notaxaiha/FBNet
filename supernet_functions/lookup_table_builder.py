@@ -8,6 +8,24 @@ from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 
 # the settings from the page 4 of https://arxiv.org/pdf/1812.03443.pdf
 #### table 2
+
+##########################################
+# ResNet 
+##########################################
+CANDIDATE_BLOCKS = ["r_k3", "r_k5", "r_k7"]
+SEARCH_SPACE = OrderedDict([
+    ("input_shape", [(32, 32, 32),
+                     (160, 32, 32)]),
+    ("channel_size", [160,
+                      320]),
+    ("strides", [1,
+                 1])
+])
+
+
+##########################################
+# SimpleNet
+##########################################
 CANDIDATE_BLOCKS = ["s_k3", "s_k5", "s_k7"]
 SEARCH_SPACE = OrderedDict([
     ("input_shape", [(32, 32, 32),
@@ -18,7 +36,11 @@ SEARCH_SPACE = OrderedDict([
                  1])
 ])
 
+
 '''
+##########################################
+# MobileNet 
+##########################################
 CANDIDATE_BLOCKS = ["ir_k3_e1", "ir_k3_s2", "ir_k3_e3",
                     "ir_k3_e6", "ir_k5_e1", "ir_k5_s2",
                     "ir_k5_e3", "ir_k5_e6", "skip"]

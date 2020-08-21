@@ -15,7 +15,8 @@ CONFIG_SUPERNET = {
         'path_to_tensorboard_logs' : './supernet_functions/logs/tb'
     },
     'dataloading' : {
-        'batch_size' : 128, # 200,
+        'batch_size' : 8, # 200,
+        #'batch_size' : 128, # 200,
         'w_share_in_train' : 0.8,
         'path_to_save_data' : './cifar10_data'
     },

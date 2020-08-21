@@ -95,7 +95,8 @@ class TrainerSupernet:
 
                 theta_list = []
                 
-                for i in range(17):
+                for i in range(2):
+                #for i in range(17):
                     temp_list = self.theta_optimizer.param_groups[0]['params'][i].tolist()
                     theta_list.append(temp_list)
 

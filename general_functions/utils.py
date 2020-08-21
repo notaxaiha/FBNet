@@ -128,6 +128,8 @@ def check_tensor_in_list(atensor, alist):
 #              "ir_k5_e1", "ir_k5_e3", "ir_k5_e6", "ir_k5_e1", "ir_k5_e6", "ir_k5_e6", "ir_k3_e6"]
 # my_unique_name_for_ARCH = "my_unique_name_for_ARCH"
 def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH):
+    print('-- ops_names:', ops_names)
+    print('-- my_unique_name_for_ARCH:', my_unique_name_for_ARCH)
     # assert len(ops_names) == 22
     if my_unique_name_for_ARCH in MODEL_ARCH:
         print("The specification with the name", my_unique_name_for_ARCH, "already written \
@@ -141,6 +143,28 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH):
             \"block_op_type\": [\n"
 
     ops = ["[\"" + str(op) + "\"], " for op in ops_names]
+    ops_lines = [ops[0], ops[1]]
+    ops_lines = [''.join(line) for line in ops_lines]
+    text_to_write += '            ' + '\n            '.join(ops_lines)
+
+    e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
+
+    print("--jieun e:", e)
+    text_to_write += "\n\
+                ],\n\
+                \"block_cfg\": {\n\
+                    \"first\": [32, 1],\n\
+                    \"stages\": [\n\
+                        [[" + e[0] + ", 160, 1, 1]],       # stage 1\n\
+                        [[" + e[1] + ", 320, 1, 1]],     # stage 2\n\
+                    ],\n\
+                    \"backbone\": [num for num in range(3)],\n\
+                },\n\
+            },\n\
+    }\
+    "
+
+    '''
     ops_lines = [ops[0], ops[1:3], ops[3:6], ops[6:10], ops[10:13], ops[13:16], ops[16]]
     ops_lines = [''.join(line) for line in ops_lines]
     text_to_write += '            ' + '\n            '.join(ops_lines)
@@ -169,6 +193,8 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH):
             },\n\
     }\
     "
+
+    '''
     ### open file and find place to insert
     with open('./fbnet_building_blocks/fbnet_modeldef.py') as f1:
         lines = f1.readlines()

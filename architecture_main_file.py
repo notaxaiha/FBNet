@@ -115,7 +115,8 @@ def main():
     # flops & param
     fnp = args.fnp
     if args.dataset == 'cifar10':
-        model = fbnet_builder.get_model(arch, cnt_classes=10).cuda()
+        model = fbnet_builder.get_model_simple(arch, cnt_classes=10).cuda()
+        #model = fbnet_builder.get_model(arch, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
         model = fbnet_builder.get_model(arch, cnt_classes=100).cuda()
 

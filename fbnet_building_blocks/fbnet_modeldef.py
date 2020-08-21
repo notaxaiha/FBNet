@@ -765,4 +765,60 @@ MODEL_ARCH = {
                     "backbone": [num for num in range(18)],
                 },
             },
+    "temp2": {
+            "block_op_type": [
+            ["s_k7"], 
+            ["s_k7"], 
+                ],
+                "block_cfg": {
+                    "first": [32, 1],
+                    "stages": [
+                        [[1, 160, 1, 1]],       # stage 1
+                        [[1, 320, 1, 1]],     # stage 2
+                    ],
+                    "backbone": [num for num in range(3)],
+                },
+            },
+    "temp4": {
+            "block_op_type": [
+            ["s_k7"], 
+            ["s_k7"], 
+                ],
+                "block_cfg": {
+                    "first": [32, 1],
+                    "stages": [
+                        [[1, 160, 1, 1]],       # stage 1
+                        [[1, 320, 1, 1]],     # stage 2
+                    ],
+                    "backbone": [num for num in range(3)],
+                },
+            },
+    "temp5": {
+            "block_op_type": [
+            ["s_k5"], 
+            ["s_k3"], 
+                ],
+                "block_cfg": {
+                    "first": [32, 1],
+                    "stages": [
+                        [[1, 160, 1, 1]],       # stage 1
+                        [[1, 320, 1, 1]],     # stage 2
+                    ],
+                    "backbone": [num for num in range(3)],
+                },
+            },
+    "temp6": {
+            "block_op_type": [
+            ["s_k7"], 
+            ["s_k5"], 
+                ],
+                "block_cfg": {
+                    "first": [32, 1],
+                    "stages": [
+                        [[1, 160, 1, 1]],       # stage 1
+                        [[1, 320, 1, 1]],     # stage 2
+                    ],
+                    "backbone": [num for num in range(3)],
+                },
+            },
     }    
