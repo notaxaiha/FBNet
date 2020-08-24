@@ -166,7 +166,8 @@ def train_supernet():
         model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
         model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=100).cuda()
-
+    elif args.dataset == 'tiny_imagenet':
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=200).cuda()
     thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
 
