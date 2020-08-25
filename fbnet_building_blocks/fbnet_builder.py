@@ -928,7 +928,7 @@ class FBNet(nn.Module):
                                     pad=0, no_bias=1, use_relu="relu", bn_type="bn")
 
         # if stride changed, need code change!!
-        data_shape = [1, 320, 2, 2]
+        data_shape = [1, 320, 4, 4]
         x = torch.torch.zeros(data_shape).cuda()
 
         flops3 = last_conv_temp.get_flops(x, only_flops=True) + nn.Linear(in_features=1280, out_features=self.cnt_classes).weight.numel()
