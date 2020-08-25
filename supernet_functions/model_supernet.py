@@ -141,7 +141,7 @@ class FBNet_Stochastic_SuperNet(nn.Module):
                                 pad=0, no_bias=1, use_relu="relu", bn_type="bn")
 
         # if stride change, need change!!
-        data_shape = [1, lookup_table.layers_parameters[-1][1], 4, 4]
+        data_shape = [1, lookup_table.layers_parameters[-1][1], 2, 2]
         x = torch.torch.zeros(data_shape).cuda()
 
         self.last_stages_flops = last_conv_temp.get_flops(x, only_flops=True) + nn.Linear(in_features=1280, out_features=cnt_classes).weight.numel()
