@@ -42,7 +42,7 @@ SEARCH_SPACE = OrderedDict([
     # table 1. strides over the 22 layers
     # mobiletnet v2 - cifar 10
     ("strides", [1,
-                 1, 1,
+                 2, 1,
                  2, 1, 1,
                  2, 1, 1, 1,
                  1, 1, 1,
