@@ -227,8 +227,10 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
     if args.dataset == 'cifar10':
         model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
-        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table,  cnt_classes=100).cuda()
-
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table,  cnt_classes=100).cuda()    
+    elif args.dataset == 'tiny_imagenet':
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table,  cnt_classes=200).cuda()
+    
     if args.quantization:
         w_optimizer = None
         yaml_path = args.quantization
