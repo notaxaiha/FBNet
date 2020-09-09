@@ -224,40 +224,79 @@ class Flatten(nn.Module):
         return x.view(-1, shape)
 
 
-class ResidualPreAct():
+class DownSample(nn.Module):
+    def __init__(self, C_in, C_out, stride):
+        super(DownSample, self).__init__()
+        self.conv = Conv2d(C_in, C_out, kernel_size=1, stride=stride, bias=False)
+        #self.conv = nn.Conv2d(C_in, C_out, kernel_size=1, stride=stride, bias=False)
+        self.bn = BatchNorm2d(C_out)
+
+    def forward(self, x):
+        out = self.conv(x)
+        out = self.bn(out)
+
+        return out
+    
+
+class ResidualPreAct(nn.Module):
     def __init__(self, C_in, C_out, stride, kernel):
         super(ResidualPreAct, self).__init__()
-        self.output_depth = C_out 
-        self.conv = (
-            ConvBNRelu(
+        self.output_depth = C_out # ANNA's code here
+        self.stride = stride 
+
+        if self.stride == 2:
+            input_channel = int(C_in/2)
+        else:
+            input_channel = C_in
+
+        self.conv1 = (
+            BNReluConv(
+                input_channel,
                 C_in,
-                C_out,
                 kernel=kernel,
                 stride=stride,
-                pad=(kernel // 2),
+                pad=(kernel//2),
                 no_bias=1,
                 use_relu="relu",
                 bn_type="bn",
             )
-            if C_in != C_out or stride != 1
-            else None
         )
+        self.conv2 = (
+            BNReluConv(
+                C_in,
+                C_in,
+                kernel=kernel,
+                stride=1,
+                pad=(kernel//2),
+                no_bias=1,
+                use_relu="relu",
+                bn_type="bn",
+            )
+        )
+        
+        if self.stride == 2:
+            self.downsample = DownSample(
+                    input_channel,
+                    C_in,
+                    stride=2
+                    )
+
 
     def forward(self, x):
-        if self.conv:
-            out = self.conv(x)
+        if self.stride == 2:
+            shortcut = self.downsample(x)
         else:
-            out = x
+            shortcut = x
+
+        out = self.conv1(x)
+        out = self.conv2(out)
+        out = out + shortcut 
+        
         return out
 
     def get_flops(self, x):
-        if self.conv:
-            # self.flops = 0
-            self.flops = count_conv_flop(self.conv, x)
-            out = self.conv(x)
-        else:
-            self.flops = 0
-            out = x
+        self.flops = count_conv_flop(self.conv, x)
+        out = self.conv(x)
         return self.flops, out
 
 
@@ -457,16 +496,6 @@ class ChannelShuffle(nn.Module):
             .view(N, C, H, W)
         )
 
-'''
-class ResidualPreAct():
-    def __init__{
-    ):
-        super(ResidualUnit, self).__init__()
-
-        temp1 = BNReluConv(x)
-        temp2 = BNReluConv(temp1)
-        out = x = temp2
-'''
 
 
 class BNReluConv(nn.Sequential):
@@ -502,6 +531,20 @@ class BNReluConv(nn.Sequential):
         self.kernel_size = (kernel, kernel)
         self.groups = group
 
+        self.bn = None
+        if bn_type == "bn":
+            self.bn = BatchNorm2d(input_depth)
+        elif bn_type == "gn":
+            self.bn = nn.GroupNorm(num_groups=gn_group, num_channels=input_depth)
+        elif bn_type == "af":
+            self.bn = FrozenBatchNorm2d(input_depth)
+        # if bn_type is not None:
+            # self.add_module("bn", self.bn_op)
+
+        self.relu = None
+        if use_relu == "relu":
+            self.relu = nn.ReLU(inplace=True)
+            # self.add_module("relu",  self.activation)
 
         self.conv = Conv2d(
             input_depth,
@@ -519,25 +562,22 @@ class BNReluConv(nn.Sequential):
             nn.init.constant_(self.conv.bias, 0.0)
         # self.add_module("conv", self.op)
 
-        self.bn = None
-        if bn_type == "bn":
-            self.bn = BatchNorm2d(output_depth)
-        elif bn_type == "gn":
-            self.bn = nn.GroupNorm(num_groups=gn_group, num_channels=output_depth)
-        elif bn_type == "af":
-            self.bn = FrozenBatchNorm2d(output_depth)
-        # if bn_type is not None:
-            # self.add_module("bn", self.bn_op)
-
-        self.relu = None
-        if use_relu == "relu":
-            self.relu = nn.ReLU(inplace=True)
-            # self.add_module("relu",  self.activation)
 
     def get_flops(self, x, only_flops=False):
+        flops1 = count_conv_flop(self.conv, x)
 
-        return 0
+        if only_flops:
+            return flops1
 
+        if self.bn != None:
+            y = self.bn(x)
+
+        if self.relu != None:
+            y = self.relu(y)
+        
+        y = self.conv(y)
+
+        return flops1, y
 
 
 class ConvBNRelu(nn.Sequential):
@@ -620,9 +660,6 @@ class ConvBNRelu(nn.Sequential):
             y = self.relu(y)
 
         return flops1, y
-
-
-
 
 
 
@@ -986,6 +1023,34 @@ class FBNetBuilder(object):
         )
         self.last_depth = out_depth
         return out
+    
+    def add_first_resnet(self, stage_info, dim_in=3, pad=True):
+        # stage_info: [c, s, kernel]
+        assert len(stage_info) >= 2
+        channel = stage_info[0]
+        stride = stage_info[1]
+        out_depth = self._get_divisible_width(int(channel * self.width_ratio))
+        kernel = 7
+        if len(stage_info) > 2:
+            kernel = stage_info[2]
+
+        out = ConvBNRelu(
+            dim_in,
+            out_depth,
+            kernel=kernel,
+            stride=stride,
+            pad=3,
+            no_bias=1,
+            use_relu="relu",
+            bn_type=self.bn_type,
+        )
+
+        self.last_depth = out_depth
+        return out
+
+    def add_maxpool_resnet(self):
+        out = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        return out
 
     def add_blocks(self, blocks):
         """ blocks: [{}, {}, ...]
@@ -1062,6 +1127,17 @@ class FBNetBuilder(object):
         ]))
         self.last_depth = cnt_classes
         return op
+    
+    def add_last_states_resnet(self, cnt_classes, dropout_ratio=0.2):
+        assert cnt_classes >= 1
+        op = nn.Sequential(OrderedDict([
+            ("avg_pool_k7", nn.AdaptiveAvgPool2d((1,1))),
+            ("flatten", Flatten()),
+            ("fc", nn.Linear(in_features=512, out_features=cnt_classes)),
+        ]))
+        self.last_depth = cnt_classes
+        return op
+
 
 def _get_trunk_cfg(arch_def):
     num_stages = get_num_stages(arch_def)
@@ -1071,17 +1147,32 @@ def _get_trunk_cfg(arch_def):
 
 class FBNet(nn.Module):
     def __init__(
-        self, builder, arch_def, dim_in, cnt_classes=1000
+        self, builder, arch_def, dim_in, cnt_classes=1000, supernet_type='mobilenetv2'
     ):
         super(FBNet, self).__init__()
-        self.first = builder.add_first(arch_def["first"], dim_in=dim_in)
+        
+        self.supernet_type = supernet_type
+
+        if self.supernet_type == 'resnet':
+            self.first = builder.add_first_resnet(arch_def["first"], dim_in=dim_in)
+            self.maxpool = builder.add_maxpool_resnet()
+        else:
+            self.first = builder.add_first(arch_def["first"], dim_in=dim_in)
         trunk_cfg = _get_trunk_cfg(arch_def)
         self.stages = builder.add_blocks(trunk_cfg["stages"])
-        self.last_stages = builder.add_last_states(cnt_classes)
+        if self.supernet_type == 'resnet':
+            self.last_stages = builder.add_last_states_resnet(cnt_classes)
+        else:
+            self.last_stages = builder.add_last_states(cnt_classes)
         self.cnt_classes = cnt_classes
     
     def forward(self, x):
         y = self.first(x)
+
+        if self.supernet_type == 'resnet':
+            y = self.maxpool(y)
+            pass
+        
         y = self.stages(y)
         y = self.last_stages(y)
         return y
@@ -1137,5 +1228,175 @@ def get_model_simple(arch, cnt_classes):
     arch_def = fbnet_modeldef.MODEL_ARCH[arch]
     arch_def = unify_arch_def(arch_def)
     builder = FBNetBuilder(width_ratio=1.0, bn_type="bn", width_divisor=8, dw_skip_bn=True, dw_skip_relu=True)
-    model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes)
+    model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes, supernet_type='resnet')
     return model
+
+
+##################################################
+def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=dilation, groups=groups, bias=False, dilation=dilation)
+
+
+def conv1x1(in_planes, out_planes, stride=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+
+class BasicBlock(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
+                 base_width=64, dilation=1, norm_layer=None):
+        super(BasicBlock, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        if groups != 1 or base_width != 64:
+            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+class ResNet(nn.Module):
+
+    def __init__(self, block, layers, num_classes=10, zero_init_residual=False,
+                 groups=1, width_per_group=64, replace_stride_with_dilation=None,
+                 norm_layer=None):
+        super(ResNet, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        self._norm_layer = norm_layer
+
+        self.inplanes = 64
+        self.dilation = 1
+        if replace_stride_with_dilation is None:
+            # each element in the tuple indicates if we should replace
+            # the 2x2 stride with a dilated convolution instead
+            replace_stride_with_dilation = [False, False, False]
+        if len(replace_stride_with_dilation) != 3:
+            raise ValueError("replace_stride_with_dilation should be None "
+                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+        self.groups = groups
+        self.base_width = width_per_group
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
+                               bias=False)
+        self.bn1 = norm_layer(self.inplanes)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
+                                       dilate=replace_stride_with_dilation[0])
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
+                                       dilate=replace_stride_with_dilation[1])
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
+                                       dilate=replace_stride_with_dilation[2])
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck):
+                    nn.init.constant_(m.bn3.weight, 0)
+                elif isinstance(m, BasicBlock):
+                    nn.init.constant_(m.bn2.weight, 0)
+
+    def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+        norm_layer = self._norm_layer
+        downsample = None
+        previous_dilation = self.dilation
+        if dilate:
+            self.dilation *= stride
+            stride = 1
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                norm_layer(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
+                            self.base_width, previous_dilation, norm_layer))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, groups=self.groups,
+                                base_width=self.base_width, dilation=self.dilation,
+                                norm_layer=norm_layer))
+
+        return nn.Sequential(*layers)
+
+    def _forward_impl(self, x):
+        # See note [TorchScript super()]
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+
+        return x
+
+    def forward(self, x):
+        return self._forward_impl(x)
+
+
+def _resnet(arch, block, layers, pretrained, progress, **kwargs):
+    model = ResNet(block, layers, **kwargs)
+    #if pretrained:
+    #    state_dict = load_state_dict_from_url(model_urls[arch],
+    #                                          progress=progress)
+    #    model.load_state_dict(state_dict)
+    return model
+
+def resnet18(pretrained=False, progress=True, **kwargs):
+    r"""ResNet-18 model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
+                   **kwargs)
+

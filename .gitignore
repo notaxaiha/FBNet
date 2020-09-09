@@ -151,6 +151,7 @@ events*
 # logger
 logger
 searched_result
+*searched_result
 
 # csv file
 *.csv

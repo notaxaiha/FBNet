@@ -12,17 +12,83 @@ from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 ##########################################
 # ResNet 
 ##########################################
+#CANDIDATE_BLOCKS = ["r_k3"]
+#CANDIDATE_BLOCKS = ["r_k3", "r_k5" ]
 CANDIDATE_BLOCKS = ["r_k3", "r_k5", "r_k7"]
+
+# 4 layers
 SEARCH_SPACE = OrderedDict([
-    ("input_shape", [(32, 32, 32),
-                     (160, 32, 32)]),
-    ("channel_size", [160,
-                      320]),
+    ("input_shape", [(64, 16, 16),
+                     (64, 16, 16),
+                     (128, 8, 8),
+                     (128, 8, 8),
+                     (256, 4, 4),
+                     (256, 4, 4),
+                     (512, 2, 2),
+                     (512, 2, 2)]),
+    ("channel_size", [64,
+                      128,
+                      128,
+                      256,
+                      256,
+                      512,
+                      512,
+                      512]),
     ("strides", [1,
+                 1,
+                 2,
+                 1,
+                 2,
+                 1,
+                 2,
                  1])
 ])
 
+'''
+# 3 layers
+SEARCH_SPACE = OrderedDict([
+    ("input_shape", [(64, 16, 16),
+                     (64, 16, 16),
+                     (128, 8, 8),
+                     (128, 8, 8),
+                     (256, 4, 4),
+                     (256, 4, 4)]),
+    ("channel_size", [64,
+                      128,
+                      128,
+                      256,
+                      256,
+                      256]),
+    ("strides", [1,
+                 1,
+                 2,
+                 1,
+                 2,
+                 1])
+])
+'''
 
+'''
+# 2 layers
+SEARCH_SPACE = OrderedDict([
+    ("input_shape", [(64, 16, 16),
+                     (64, 16, 16),
+                     (128, 8, 8),
+                     (128, 8, 8)]),
+    ("channel_size", [64,
+                      128,
+                      128,
+                      128]),
+    ("strides", [1,
+                 1,
+                 2,
+                 1])
+])
+
+'''
+
+
+'''
 ##########################################
 # SimpleNet
 ##########################################
@@ -35,6 +101,7 @@ SEARCH_SPACE = OrderedDict([
     ("strides", [1,
                  1])
 ])
+'''
 
 
 '''

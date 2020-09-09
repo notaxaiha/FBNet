@@ -14,7 +14,7 @@ from general_functions.dataloaders import get_loaders, get_test_loader
 from general_functions.utils import get_logger, weights_init, load, create_directories_from_list, \
     check_tensor_in_list, writh_new_ARCH_to_fbnet_modeldef
 from supernet_functions.lookup_table_builder import LookUpTable
-from supernet_functions.model_supernet import FBNet_Stochastic_SuperNet, SupernetLoss
+from supernet_functions.model_supernet import FBNet_Stochastic_SuperNet, FBNet_Stochastic_SuperNet_ResNet, SupernetLoss
 from supernet_functions.training_functions_supernet import TrainerSupernet
 from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 from fbnet_building_blocks.fbnet_modeldef import MODEL_ARCH
@@ -38,6 +38,8 @@ parser.add_argument('--gpu', type=str, default='0', \
                     help='gpu number to use')
 parser.add_argument('--dataset', type=str, default='cifar10', \
                     help='using dataset')
+parser.add_argument('--supernet_type', type=str, default='mobilenetv2', \
+                    help='supernet type')
 
 # SGD optimizer - weight
 parser.add_argument('--w_lr', type=float, default=0.1, \
@@ -141,7 +143,10 @@ def train_supernet():
     #### model
 
     if args.dataset == 'cifar10':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+        if args.supernet_type == 'resnet':
+            model = FBNet_Stochastic_SuperNet_ResNet(lookup_table, cnt_classes=10).cuda()
+        else:
+            model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
         model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
 
@@ -166,6 +171,10 @@ def train_supernet():
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
     print(model)
+
+    #from torchsummary import summary
+    #summary(model, (3, 32, 32))
+
     #### loss, optimizer and scheduler
     criterion = SupernetLoss(reg_loss_type=args.reg_loss_type, alpha=args.alpha, beta=args.beta,
                              reg_lambda=args.reg_lambda, ref_value=args.ref_value).cuda()
@@ -198,7 +207,10 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
     lookup_table = LookUpTable()
 
     if args.dataset == 'cifar10':
-        model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+        if args.supernet_type == 'resnet':
+            model = FBNet_Stochastic_SuperNet_ResNet(lookup_table, cnt_classes=10).cuda()
+        else:
+            model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
         model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=100).cuda()
 
@@ -227,7 +239,7 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
             arch_operations.append(ops_names[np.random.choice(rng, p=distribution)])
 
     logger.info("sampled architecture: " + " - ".join(arch_operations))
-    writh_new_ARCH_to_fbnet_modeldef(arch_operations, my_unique_name_for_ARCH=unique_name_of_arch)
+    writh_new_ARCH_to_fbnet_modeldef(arch_operations, my_unique_name_for_ARCH=unique_name_of_arch, supernet_type=args.supernet_type)
     logger.info("congratulations! new architecture " + unique_name_of_arch \
                 + " was written into fbnet_building_blocks/fbnet_modeldef.py")
 
@@ -242,7 +254,7 @@ def check_flops():
     input_var = torch.zeros(data_shape).cuda()
 
     #### model
-    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10).cuda()
+    model = FBNet_Stochastic_SuperNet(lookup_table, cnt_classes=10, supernet_type=args.supernet_type).cuda()
     model = model.apply(weights_init)
 
     #### training loop

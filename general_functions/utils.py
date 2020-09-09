@@ -127,7 +127,7 @@ def check_tensor_in_list(atensor, alist):
 #              "ir_k3_e6", "ir_k5_e6", "ir_k5_e6", "ir_k5_e1", "skip", "ir_k5_e3", "ir_k5_e6", "ir_k3_e1",
 #              "ir_k5_e1", "ir_k5_e3", "ir_k5_e6", "ir_k5_e1", "ir_k5_e6", "ir_k5_e6", "ir_k3_e6"]
 # my_unique_name_for_ARCH = "my_unique_name_for_ARCH"
-def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH):
+def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH, supernet_type="mobilenetv2"):
     print('-- ops_names:', ops_names)
     print('-- my_unique_name_for_ARCH:', my_unique_name_for_ARCH)
     # assert len(ops_names) == 22
@@ -138,63 +138,100 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH):
         assert my_unique_name_for_ARCH not in MODEL_ARCH
     
     ### create text to insert
+    if supernet_type=='simple':
+
+        text_to_write = "    \"" + my_unique_name_for_ARCH + "\": {\n\
+                \"block_op_type\": [\n"
+
+        ops = ["[\"" + str(op) + "\"], " for op in ops_names]
+        ops_lines = [ops[0], ops[1]]
+        ops_lines = [''.join(line) for line in ops_lines]
+        text_to_write += '            ' + '\n            '.join(ops_lines)
+
+        e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
+
+        print("--jieun e:", e)
+        text_to_write += "\n\
+                    ],\n\
+                    \"block_cfg\": {\n\
+                        \"first\": [32, 1],\n\
+                        \"stages\": [\n\
+                            [[" + e[0] + ", 160, 1, 1]],       # stage 1\n\
+                            [[" + e[1] + ", 320, 1, 1]],     # stage 2\n\
+                        ],\n\
+                        \"backbone\": [num for num in range(3)],\n\
+                    },\n\
+                },\n\
+        }\
+        "
+
+    elif supernet_type=='resnet':
+        text_to_write = "    \"" + my_unique_name_for_ARCH + "\": {\n\
+                \"block_op_type\": [\n"
+
+        ops = ["[\"" + str(op) + "\"], " for op in ops_names]
+        ops_lines = [ops[0:2], ops[2:4], ops[4:6], ops[6:8]]
+        ops_lines = [''.join(line) for line in ops_lines]
+        text_to_write += '            ' + '\n            '.join(ops_lines)
+
+        e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
+
+        print("--jieun e:", e)
+        text_to_write += "\n\
+                    ],\n\
+                    \"block_cfg\": {\n\
+                        \"first\": [64, 2],\n\
+                        \"stages\": [\n\
+                            [[0, 64, 1, 1]],        # stage 1\n\
+                            [[0, 128, 1, 1]],       # stage 2\n\
+                            [[0, 128, 1, 2]],       # stage 3\n\
+                            [[0, 256, 1, 1]],       # stage 4\n\
+                            [[0, 256, 1, 2]],       # stage 5\n\
+                            [[0, 512, 1, 1]],       # stage 6\n\
+                            [[0, 512, 1, 2]],       # stage 7\n\
+                            [[0, 512, 1, 1]],       # stage 8\n\
+                        ],\n\
+                        \"backbone\": [num for num in range(9)],\n\
+                    },\n\
+                },\n\
+        }\
+        "
     
-    text_to_write = "    \"" + my_unique_name_for_ARCH + "\": {\n\
-            \"block_op_type\": [\n"
+    else:
 
-    ops = ["[\"" + str(op) + "\"], " for op in ops_names]
-    ops_lines = [ops[0], ops[1]]
-    ops_lines = [''.join(line) for line in ops_lines]
-    text_to_write += '            ' + '\n            '.join(ops_lines)
+        text_to_write = "    \"" + my_unique_name_for_ARCH + "\": {\n\
+                \"block_op_type\": [\n"
 
-    e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
+        ops = ["[\"" + str(op) + "\"], " for op in ops_names]
+        ops_lines = [ops[0], ops[1:3], ops[3:6], ops[6:10], ops[10:13], ops[13:16], ops[16]]
+        ops_lines = [''.join(line) for line in ops_lines]
+        text_to_write += '            ' + '\n            '.join(ops_lines)
 
-    print("--jieun e:", e)
-    text_to_write += "\n\
-                ],\n\
-                \"block_cfg\": {\n\
-                    \"first\": [32, 1],\n\
-                    \"stages\": [\n\
-                        [[" + e[0] + ", 160, 1, 1]],       # stage 1\n\
-                        [[" + e[1] + ", 320, 1, 1]],     # stage 2\n\
+        e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
+
+        text_to_write += "\n\
                     ],\n\
-                    \"backbone\": [num for num in range(3)],\n\
+                    \"block_cfg\": {\n\
+                        \"first\": [32, 1],\n\
+                        \"stages\": [\n\
+                            [[" + e[0] + ", 16, 1, 1]],                                                        # stage 1\n\
+                            [[" + e[1] + ", 24, 1, 2]],  [[" + e[2] + ", 24, 1, 1]],  # stage 2\n\
+                            [[" + e[3] + ", 32, 1, 2]],  [[" + e[4] + ", 32, 1, 1]],  \
+            [[" + e[5] + ", 32, 1, 1]],  # stage 3\n\
+                            [[" + e[6] + ", 64, 1, 2]],  [[" + e[7] + ", 64, 1, 1]],  \
+            [[" + e[8] + ", 64, 1, 1]],  [[" + e[9] + ", 64, 1, 1]],  # stage 4\n\
+                            [[" + e[10] + ", 96, 1, 1]], [[" + e[11] + ", 96, 1, 1]], \
+            [[" + e[12] + ", 96, 1, 1]], # stage 5\n\
+                            [[" + e[13] + ", 160, 1, 2]], [[" + e[14] + ", 160, 1, 1]], \
+            [[" + e[15] + ", 160, 1, 1]], # stage 6\n\
+                            [[" + e[16] + ", 320, 1, 1]],                                                       # stage 7\n\
+                        ],\n\
+                        \"backbone\": [num for num in range(18)],\n\
+                    },\n\
                 },\n\
-            },\n\
-    }\
-    "
+        }\
+        "
 
-    '''
-    ops_lines = [ops[0], ops[1:3], ops[3:6], ops[6:10], ops[10:13], ops[13:16], ops[16]]
-    ops_lines = [''.join(line) for line in ops_lines]
-    text_to_write += '            ' + '\n            '.join(ops_lines)
-
-    e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
-
-    text_to_write += "\n\
-                ],\n\
-                \"block_cfg\": {\n\
-                    \"first\": [32, 1],\n\
-                    \"stages\": [\n\
-                        [[" + e[0] + ", 16, 1, 1]],                                                        # stage 1\n\
-                        [[" + e[1] + ", 24, 1, 2]],  [[" + e[2] + ", 24, 1, 1]],  # stage 2\n\
-                        [[" + e[3] + ", 32, 1, 2]],  [[" + e[4] + ", 32, 1, 1]],  \
-        [[" + e[5] + ", 32, 1, 1]],  # stage 3\n\
-                        [[" + e[6] + ", 64, 1, 2]],  [[" + e[7] + ", 64, 1, 1]],  \
-        [[" + e[8] + ", 64, 1, 1]],  [[" + e[9] + ", 64, 1, 1]],  # stage 4\n\
-                        [[" + e[10] + ", 96, 1, 1]], [[" + e[11] + ", 96, 1, 1]], \
-        [[" + e[12] + ", 96, 1, 1]], # stage 5\n\
-                        [[" + e[13] + ", 160, 1, 2]], [[" + e[14] + ", 160, 1, 1]], \
-        [[" + e[15] + ", 160, 1, 1]], # stage 6\n\
-                        [[" + e[16] + ", 320, 1, 1]],                                                       # stage 7\n\
-                    ],\n\
-                    \"backbone\": [num for num in range(18)],\n\
-                },\n\
-            },\n\
-    }\
-    "
-
-    '''
     ### open file and find place to insert
     with open('./fbnet_building_blocks/fbnet_modeldef.py') as f1:
         lines = f1.readlines()

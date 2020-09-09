@@ -807,18 +807,70 @@ MODEL_ARCH = {
                     "backbone": [num for num in range(3)],
                 },
             },
-    "temp6": {
-            "block_op_type": [
-            ["s_k7"], 
-            ["s_k5"], 
-                ],
-                "block_cfg": {
-                    "first": [32, 1],
-                    "stages": [
-                        [[1, 160, 1, 1]],       # stage 1
-                        [[1, 320, 1, 1]],     # stage 2
+    "temp": {
+                "block_op_type": [
+            ["r_k3"], ["r_k3"], 
+            ["r_k3"], ["r_k3"], 
+            ["r_k3"], ["r_k3"], 
+            ["r_k3"], ["r_k3"], 
                     ],
-                    "backbone": [num for num in range(3)],
+                    "block_cfg": {
+                        "first": [64, 2],
+                        "stages": [
+                            [[0, 64, 1, 1]],       # stage 1
+                            [[0, 128, 1, 1]],     # stage 2
+                            [[0, 128, 1, 2]],       # stage 3
+                            [[0, 256, 1, 1]],     # stage 4
+                            [[0, 256, 1, 2]],       # stage 5
+                            [[0, 512, 1, 1]],     # stage 6
+                            [[0, 512, 1, 2]],       # stage 7
+                            [[0, 512, 1, 1]],     # stage 8
+                        ],
+                        "backbone": [num for num in range(9)],
+                    },
                 },
-            },
-    }    
+    "resnet_orig": {
+                "block_op_type": [
+            ["r_k3"], ["r_k3"], 
+            ["r_k3"], ["r_k3"], 
+            ["r_k3"], ["r_k3"], 
+            ["r_k3"], ["r_k3"], 
+                    ],
+                    "block_cfg": {
+                        "first": [64, 2],
+                        "stages": [
+                            [[0, 64, 1, 1]],        # stage 1
+                            [[0, 128, 1, 1]],       # stage 2
+                            [[0, 128, 1, 2]],       # stage 3
+                            [[0, 256, 1, 1]],       # stage 4
+                            [[0, 256, 1, 2]],       # stage 5
+                            [[0, 512, 1, 1]],       # stage 6
+                            [[0, 512, 1, 2]],       # stage 7
+                            [[0, 512, 1, 1]],       # stage 8
+                        ],
+                        "backbone": [num for num in range(9)],
+                    },
+                },
+    "resnet_search": {
+                "block_op_type": [
+            ["r_k3"], ["r_k3"], 
+            ["r_k5"], ["r_k7"], 
+            ["r_k3"], ["r_k7"], 
+            ["r_k5"], ["r_k7"], 
+                    ],
+                    "block_cfg": {
+                        "first": [64, 2],
+                        "stages": [
+                            [[0, 64, 1, 1]],        # stage 1
+                            [[0, 128, 1, 1]],       # stage 2
+                            [[0, 128, 1, 2]],       # stage 3
+                            [[0, 256, 1, 1]],       # stage 4
+                            [[0, 256, 1, 2]],       # stage 5
+                            [[0, 512, 1, 1]],       # stage 6
+                            [[0, 512, 1, 2]],       # stage 7
+                            [[0, 512, 1, 1]],       # stage 8
+                        ],
+                        "backbone": [num for num in range(9)],
+                    },
+                },
+        }        

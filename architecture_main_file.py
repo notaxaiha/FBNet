@@ -33,6 +33,8 @@ parser.add_argument('--gpu', type=str, default='0', \
                     help='gpu number to use')
 parser.add_argument('--dataset', type=str, default='cifar10', \
                     help='using dataset')
+parser.add_argument('--supernet_type', type=str, default='mobilenetv2', \
+                    help='supernet type')
 
 # SGD optimizer - weight
 parser.add_argument('--lr', type=float, default=0.1, \
@@ -115,8 +117,14 @@ def main():
     # flops & param
     fnp = args.fnp
     if args.dataset == 'cifar10':
-        model = fbnet_builder.get_model_simple(arch, cnt_classes=10).cuda()
-        #model = fbnet_builder.get_model(arch, cnt_classes=10).cuda()
+        if args.supernet_type == 'simple':
+            model = fbnet_builder.get_model_simple(arch, cnt_classes=10).cuda()
+        elif args.supernet_type == 'resnet':
+            model = fbnet_builder.get_model_simple(arch, cnt_classes=10).cuda()
+        elif args.supernet_type == 'resnet_torch':
+            model = fbnet_builder.resnet18(pretrained=False, progress=False).cuda()
+        else:
+            model = fbnet_builder.get_model(arch, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
         model = fbnet_builder.get_model(arch, cnt_classes=100).cuda()
 
@@ -154,7 +162,10 @@ def main():
         compression_scheduler, optimizer = convert_model_to_quant(model.module.stages, yaml_path)
     else:
         compression_scheduler = None
+    
     print(model)
+    print(summary(model, input_size=(3, 32, 32)))
+    
     #### Scheduler
     if args.scheduler == 'MultiStepLR':
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,

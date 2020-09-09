@@ -6,7 +6,8 @@ CONFIG_SUPERNET = {
     },
     'lookup_table' : {
         'create_from_scratch' : False,
-        'path_to_lookup_table' : './supernet_functions/lookup_table_simple.txt',
+        'path_to_lookup_table' : './supernet_functions/lookup_table_resnet.txt',
+        #'path_to_lookup_table' : './supernet_functions/lookup_table_simple.txt',
         #'path_to_lookup_table' : './supernet_functions/lookup_table.txt',
         'number_of_runs' : 15 # each operation run number_of_runs times and then we will take average
     },
