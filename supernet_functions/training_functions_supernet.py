@@ -17,12 +17,14 @@ import distiller.models as models
 from distiller.utils import float_range_argparse_checker as float_range
 from distiller_utils.distiller_utils import delete_float_w
 
+import numpy as np
+
 from os.path import join, dirname
 
 
 class TrainerSupernet:
     def __init__(self, criterion, w_optimizer, theta_optimizer, w_scheduler, logger, writer,
-                 temperature, min_temperature, exp_anneal_rate, epoch, train_thetas_from_the_epoch, print_freq,
+                 tau_scheduling,temperature, min_temperature, exp_anneal_rate, N_step, reg_tau, epoch, train_thetas_from_the_epoch, print_freq,
                  check_flops=False, comp_scheduler=None, path_to_save_model=None):
         self.top1 = AverageMeter()
         self.top3 = AverageMeter()
@@ -30,6 +32,7 @@ class TrainerSupernet:
         self.losses_flops = AverageMeter()
         self.losses_ce = AverageMeter()
         self.flops = AverageMeter()
+        self.params = AverageMeter()
 
         self.logger = logger
         self.writer = writer
@@ -41,7 +44,7 @@ class TrainerSupernet:
         self.check_flops = check_flops
 
         self.temperature = temperature
-
+        
         self.cnt_epochs = epoch
         self.train_thetas_from_the_epoch = train_thetas_from_the_epoch
         self.print_freq = print_freq
@@ -50,48 +53,85 @@ class TrainerSupernet:
 
         self.comp_scheduler = comp_scheduler
 
-        if min_temperature is not None:
+        self.global_training_step = None
+        
+        # exponentioal scheduling mode
+        if tau_scheduling == 'exp':
+            self.gumbel_scheduler = None
+
+            # e ** exp_anneal_rate - exponential scheduling 
+            if min_temperature == None:
+                self.exp_anneal_rate = exp_anneal_rate  # apply it every epoch
+
+            # max => min - exponential scheduling
+            else :
+                # print(min_temperature, temperature, self.cnt_epochs, self.train_thetas_from_the_epoch)
+                self.exp_anneal_rate = (math.log(min_temperature) - math.log(temperature)) / (self.cnt_epochs - self.train_thetas_from_the_epoch)
+                self.exp_anneal_rate = np.exp(self.exp_anneal_rate)
+        # cosine annealing scheduling mode
+        elif tau_scheduling == 'cos':
             self.gumbel_scheduler = CosineAnnealingTau(self.temperature, min_temperature,
                                                        self.cnt_epochs - self.train_thetas_from_the_epoch)
             self.exp_anneal_rate = None
-        else:
-            self.gumbel_scheduler = None
-            self.exp_anneal_rate = exp_anneal_rate  # apply it every epoch
 
-    def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model, eval_mode):
+        # gumbel softmax original scheduling mode
+        elif tau_scheduling == 'orig':
+            self.temperature = 1.0
+            self.global_training_step = 0
+            self.N_step = N_step
+            self.reg_tau = reg_tau
+
+            # flag for skip warmup step
+            self.after_warmup = False
+
+        # others option
+        else:
+            return None
+
+
+    def train_loop(self, train_w_loader, train_thetas_loader, test_loader, model, sampling_mode=[None, None, None,None]):
+        '''
+        sampling_mode : [warmup_mode, w_training_mode, theta_training_mode , eval_mode]    # how to select layer candidate (gumbel or top1)
+        '''
 
         best_top1 = 0.0
 
         all_theta_list = []
-
+        
         if self.check_flops == True:
-            flops_list = self._check_flops(model, test_loader)
-            return flops_list
+            flops_list, params_list = self._check_flops(model, test_loader)
+            return flops_list, params_list
 
         else:
             for epoch in range(self.train_thetas_from_the_epoch):
                 self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
 
                 self.logger.info("Firstly, start to train weights for epoch %d" % (epoch))
-                self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_")
+                self._training_step(model, train_w_loader, self.w_optimizer, epoch, info_for_logger="_w_step_", sampling_mode=sampling_mode[0])
                 self.w_scheduler.step()
+                
+
+            if self.global_training_step is not None:
+                self.after_warmup = True
 
             for epoch in range(self.train_thetas_from_the_epoch, self.cnt_epochs):
                 self.writer.add_scalar('learning_rate/weights', self.w_optimizer.param_groups[0]['lr'], epoch)
                 self.writer.add_scalar('learning_rate/theta', self.theta_optimizer.param_groups[0]['lr'], epoch)
 
+                # training weight step
                 self.logger.info("Start to train weights for epoch %d" % (epoch))
                 top1, losses = self._training_step(model, train_w_loader, self.w_optimizer, epoch,
-                                                  info_for_logger="_w_step_")
+                                                  info_for_logger="_w_step_", sampling_mode=sampling_mode[1])
 
                 if self.comp_scheduler:
                     self.comp_scheduler.on_epoch_end(epoch, self.w_optimizer, metrics={'min': losses, 'max': top1})
                 else:
                     self.w_scheduler.step()
 
+                # training theta step
                 self.logger.info("Start to train theta for epoch %d" % (epoch))
                 self._training_step(model, train_thetas_loader, self.theta_optimizer, epoch,
-                                  info_for_logger="_theta_step_")
+                                  info_for_logger="_theta_step_", sampling_mode=sampling_mode[2])
 
                 theta_list = []
                 
@@ -102,22 +142,30 @@ class TrainerSupernet:
 
                 all_theta_list.append([theta_list, self.temperature])
 
-                top1_avg = self._validate(model, test_loader, epoch, eval_mode)
+                top1_avg = self._validate(model, test_loader, epoch, sampling_mode[3])
                 if best_top1 < top1_avg:
                     best_top1 = top1_avg
                     self.logger.info("Best top1 acc by now. Save model")
                     save(model, self.path_to_save_model)
 
                 self.writer.add_scalar('temperature', self.temperature, epoch)
-                if self.gumbel_scheduler is None:
+
+                # original tau scheduling - update on training steps
+                if self.global_training_step is not None:
+                    continue
+
+                # fbnet exponential tau scheduling
+                elif self.gumbel_scheduler is None:
                     self.temperature = self.temperature * self.exp_anneal_rate
+
+                # cosine annealing scheduling
                 else:
                     self.temperature = self.gumbel_scheduler.get_lr(
                         current_epoch=epoch - self.train_thetas_from_the_epoch)
 
-            pd.DataFrame(all_theta_list).to_csv(join(dirname(self.path_to_save_model), 'theatas.csv'))
+            pd.DataFrame(all_theta_list).to_csv(join(dirname(self.path_to_save_model), 'thetas.csv'))
 
-    def _training_step(self, model, loader, optimizer, epoch, info_for_logger=""):
+    def _training_step(self, model, loader, optimizer, epoch, info_for_logger="", sampling_mode=None):
         model = model.train()
         start_time = time.time()
 
@@ -134,9 +182,11 @@ class TrainerSupernet:
                 self.comp_scheduler.on_minibatch_begin(epoch, step, steps_per_epoch, optimizer)
 
             flops_to_accumulate = Variable(torch.Tensor([[0.0]]), requires_grad=True).cuda()
-            outs, flops_to_accumulate = model(X, self.temperature, flops_to_accumulate)
-            loss = self.criterion(outs, y, flops_to_accumulate, self.losses_ce, self.losses_flops, self.flops, N)
-
+            params_to_accumulate = Variable(torch.Tensor([[0.0]])).cuda()
+            
+            outs, flops_to_accumulate, params_to_accumulate = model(X, self.temperature, flops_to_accumulate, params_to_accumulate, sampling_mode=sampling_mode)
+            loss = self.criterion(outs, y, flops_to_accumulate, params_to_accumulate, self.losses_ce, self.losses_flops, self.flops, self.params, N)
+            
             if self.comp_scheduler:
                 agg_loss = self.comp_scheduler.before_backward_pass(epoch, step, steps_per_epoch, loss,
                                                                     optimizer=optimizer, return_loss_components=True)
@@ -158,13 +208,23 @@ class TrainerSupernet:
             self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader),
                                              val_or_train="Train")
 
+            # original tau scheuduling - step update
+            if self.global_training_step is not None and self.after_warmup == True:
+                self.global_training_step += 1
+
+                # update every N_step
+                if self.global_training_step % self.N_step == 0:
+                    self.temperature = max(0.5, np.exp(-1 * self.reg_tau * self.global_training_step))
+
+
+
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, info_for_logger=info_for_logger,
                                   val_or_train='train')
 
         top1_acc = self.top1
         losses = self.losses
 
-        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops]:
+        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops, self.params]:
             avg.reset()
 
         return top1_acc, losses
@@ -176,11 +236,11 @@ class TrainerSupernet:
         # X.to(device, non_blocking=True), y.to(device, non_blocking=True)
 
         # optimizer.zero_grad()
-        _, flops_list = model.get_flops(input_var, self.temperature)
+        _, flops_list, params_list = model.get_flops(input_var, self.temperature)
 
-        return flops_list
+        return flops_list, params_list
 
-    def _validate(self, model, loader, epoch, eval_mode=None):
+    def _validate(self, model, loader, epoch, sampling_mode=None):
         model.eval()
         start_time = time.time()
 
@@ -190,15 +250,16 @@ class TrainerSupernet:
                 N = X.shape[0]
 
                 flops_to_accumulate = torch.Tensor([[0.0]]).cuda()
-                outs, flops_to_accumulate = model(X, self.temperature, flops_to_accumulate, eval_mode=eval_mode)
-                loss = self.criterion(outs, y, flops_to_accumulate, self.losses_ce, self.losses_flops, self.flops, N)
+                params_to_accumulate = torch.Tensor([[0.0]]).cuda()
+                outs, flops_to_accumulate, params_to_accumulate = model(X, self.temperature, flops_to_accumulate, params_to_accumulate, sampling_mode=sampling_mode)
+                loss = self.criterion(outs, y, flops_to_accumulate, params_to_accumulate, self.losses_ce, self.losses_flops, self.flops, self.params, N)
 
                 self._intermediate_stats_logging(outs, y, loss, step, epoch, N, len_loader=len(loader),
                                                  val_or_train="Valid")
 
         top1_avg = self.top1.get_avg()
         self._epoch_stats_logging(start_time=start_time, epoch=epoch, val_or_train='val')
-        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops]:
+        for avg in [self.top1, self.top3, self.losses, self.losses_flops, self.losses_ce, self.flops, self.params]:
             avg.reset()
         return top1_avg
 
@@ -212,6 +273,8 @@ class TrainerSupernet:
                                self.losses_ce.get_avg(), epoch)
         self.writer.add_scalar('train_vs_val/' + val_or_train + '_flops' + info_for_logger,
                                self.flops.get_avg(), epoch)
+        self.writer.add_scalar('train_vs_val/' + val_or_train + '_params' + info_for_logger,
+                               self.params.get_avg(), epoch)
 
         top1_avg = self.top1.get_avg()
         self.logger.info(info_for_logger + val_or_train + ": [{:3d}/{}] Final Prec@1 {:.4%} Time {:.2f}".format(

@@ -54,11 +54,22 @@ parser.add_argument('--batch', type=int, default=100, \
 parser.add_argument('--data_split', type=float, default=0.8, \
                     help="split dataset for weight, theta (x : 1-x)")
 
-# training setting - scheduler
+# training setting - Cosine Annealing scheduler
 parser.add_argument('--scheduler', type=str, default="CosineAnnealingLR", \
                     help="set scheduler option 'CosineAnnealingLR' or MultiStepLR")
 parser.add_argument('--eta_min', type=float, default=1e-3, \
                     help="lr cosine anneling eta_min value")
+
+# training setting - MultistepLR scheduler
+parser.add_argument('--milestones', type=str, default="90 180 270", \
+                    help="when lr decrease on epoch")
+parser.add_argument('--lr_decay', type=float, default=0.1, \
+                    help="lr decay")
+
+# dataset
+parser.add_argument('--dataset_path', type=str, default='./cifar10_data', \
+                    help="saved dataset path")
+
 
 args = parser.parse_args()
 
@@ -104,10 +115,10 @@ def main():
 
     #### DataLoading
     train_loader = get_loaders(1.0, args.batch,
-                               CONFIG_ARCH['dataloading']['path_to_save_data'],
+                               args.dataset_path,
                                dataset=args.dataset)
     valid_loader = get_test_loader(args.batch,
-                                   CONFIG_ARCH['dataloading']['path_to_save_data'],
+                                   args.dataset_path,
                                    dataset=args.dataset)
 
     #### Model
@@ -168,9 +179,11 @@ def main():
     
     #### Scheduler
     if args.scheduler == 'MultiStepLR':
+        milestones = args.milestones.split(' ')
+        milestones = [int(x) for x in milestones]
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                         milestones=CONFIG_ARCH['train_settings']['milestones'],
-                                                         gamma=CONFIG_ARCH['train_settings']['lr_decay'])
+                                                         milestones=milestones,
+                                                         gamma=args.lr_decay)
     elif args.scheduler == 'CosineAnnealingLR':
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
                                                                T_max=args.epoch,
