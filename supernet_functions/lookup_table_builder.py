@@ -9,156 +9,98 @@ from supernet_functions.config_for_supernet import CONFIG_SUPERNET
 # the settings from the page 4 of https://arxiv.org/pdf/1812.03443.pdf
 #### table 2
 
-##########################################
-# ResNet 
-##########################################
-#CANDIDATE_BLOCKS = ["r_k3"]
-#CANDIDATE_BLOCKS = ["r_k3", "r_k5" ]
-CANDIDATE_BLOCKS = ["r_k3", "r_k5", "r_k7"]
-
-# 4 layers
-SEARCH_SPACE = OrderedDict([
-    ("input_shape", [(64, 16, 16),
-                     (64, 16, 16),
-                     (128, 8, 8),
-                     (128, 8, 8),
-                     (256, 4, 4),
-                     (256, 4, 4),
-                     (512, 2, 2),
-                     (512, 2, 2)]),
-    ("channel_size", [64,
-                      128,
-                      128,
-                      256,
-                      256,
-                      512,
-                      512,
-                      512]),
-    ("strides", [1,
-                 1,
-                 2,
-                 1,
-                 2,
-                 1,
-                 2,
-                 1])
-])
-
-'''
-# 3 layers
-SEARCH_SPACE = OrderedDict([
-    ("input_shape", [(64, 16, 16),
-                     (64, 16, 16),
-                     (128, 8, 8),
-                     (128, 8, 8),
-                     (256, 4, 4),
-                     (256, 4, 4)]),
-    ("channel_size", [64,
-                      128,
-                      128,
-                      256,
-                      256,
-                      256]),
-    ("strides", [1,
-                 1,
-                 2,
-                 1,
-                 2,
-                 1])
-])
-'''
-
-'''
-# 2 layers
-SEARCH_SPACE = OrderedDict([
-    ("input_shape", [(64, 16, 16),
-                     (64, 16, 16),
-                     (128, 8, 8),
-                     (128, 8, 8)]),
-    ("channel_size", [64,
-                      128,
-                      128,
-                      128]),
-    ("strides", [1,
-                 1,
-                 2,
-                 1])
-])
-
-'''
-
-
-'''
-##########################################
-# SimpleNet
-##########################################
-CANDIDATE_BLOCKS = ["s_k3", "s_k5", "s_k7"]
-SEARCH_SPACE = OrderedDict([
-    ("input_shape", [(32, 32, 32),
-                     (160, 32, 32)]),
-    ("channel_size", [160,
-                      320]),
-    ("strides", [1,
-                 1])
-])
-'''
-
-
-'''
-##########################################
-# MobileNet 
-##########################################
-CANDIDATE_BLOCKS = ["ir_k3_e1", "ir_k3_s2", "ir_k3_e3",
+CANDIDATE_BLOCKS = {
+        "simple": ["s_k3", "s_k5", "s_k7"],
+        "resnet": ["r_k3", "r_k5", "r_k7"],
+        "mobilenetv2": ["ir_k3_e1", "ir_k3_s2", "ir_k3_e3",
                     "ir_k3_e6", "ir_k5_e1", "ir_k5_s2",
                     "ir_k5_e3", "ir_k5_e6", "skip"]
-SEARCH_SPACE = OrderedDict([
-    #### table 1. input shapes of 22 searched layers (considering with strides)
-    # Note: the second and third dimentions are recommended (will not be used in training) and written just for debagging
-    # Imagenet - original
-    # ("input_shape", [(32, 112, 112),
-    #                  (16, 112, 112), (24, 56, 56),
-    #                  (24, 56, 56), (32, 28, 28), (32, 28, 28),
-    #                  (32, 28, 28), (64, 14, 14), (64, 14, 14), (64, 14, 14),
-    #                  (64, 14, 14), (96, 14, 14), (96, 14, 14),
-    #                  (96, 14, 14), (160, 7, 7), (160, 7, 7),
-    #                  (160, 7, 7)]),
+        }
 
-    # cifar-10
-    ("input_shape", [(32, 32, 32),
-                     (16, 32, 32), (24, 32, 32),
-                     (24, 32, 32),   (32, 16, 16),  (32, 28, 16),
-                     (32, 16, 16),   (64, 8, 8),  (64, 8, 8),  (64, 8, 8),
-                     (64, 8, 8),   (96, 8, 8), (96, 8, 8),
-                     (96, 8, 8),  (160, 4, 4),   (160, 4, 4),
-                     (160, 4, 4)]),
-    # table 1. filter numbers over the 22 layers
-    ("channel_size", [16,
-                      24,  24,
-                      32,  32,  32,
-                      64,  64,  64,  64,
-                      96,  96,  96,
-                      160, 160, 160,
-                      320]),
-    # table 1. strides over the 22 layers
-    # mobiletnet v2 - cifar 10
-    ("strides", [1,
-                 1, 1,
-                 2, 1, 1,
-                 2, 1, 1, 1,
-                 1, 1, 1,
-                 2, 1, 1,
-                 1])
+SEARCH_SPACE = {
+        "simple": OrderedDict([
+            ("input_shape", [(32, 32, 32),
+                             (160, 32, 32)]),
+            ("channel_size", [160,
+                              320]),
+            ("strides", [1,
+                         1])
+        ]),
+        "resnet": OrderedDict([
+            ("input_shape", [(64, 16, 16),
+                             (64, 16, 16),
+                             (128, 8, 8),
+                             (128, 8, 8),
+                             (256, 4, 4),
+                             (256, 4, 4),
+                             (512, 2, 2),
+                             (512, 2, 2)]),
+            ("channel_size", [64,
+                              128,
+                              128,
+                              256,
+                              256,
+                              512,
+                              512,
+                              512]),
+            ("strides", [1,
+                         1,
+                         2,
+                         1,
+                         2,
+                         1,
+                         2,
+                         1])
+        ]),
+        "mobilenetv2": OrderedDict([
+            #### table 1. input shapes of 22 searched layers (considering with strides)
+            # Note: the second and third dimentions are recommended (will not be used in training) and written just for debagging
+            # Imagenet - original
+            # ("input_shape", [(32, 112, 112),
+            #                  (16, 112, 112), (24, 56, 56),
+            #                  (24, 56, 56), (32, 28, 28), (32, 28, 28),
+            #                  (32, 28, 28), (64, 14, 14), (64, 14, 14), (64, 14, 14),
+            #                  (64, 14, 14), (96, 14, 14), (96, 14, 14),
+            #                  (96, 14, 14), (160, 7, 7), (160, 7, 7),
+            #                  (160, 7, 7)]),
 
-    # # mobilenet v2 -imagenet - orig
-    # ("strides", [1,
-    #              2, 1,
-    #              2, 1, 1,
-    #              2, 1, 1, 1,
-    #              1, 1, 1,
-    #              2, 1, 1,
-    #              1])
-])
-'''
+            # cifar-10
+            ("input_shape", [(32, 32, 32),
+                             (16, 32, 32), (24, 32, 32),
+                             (24, 32, 32),   (32, 16, 16),  (32, 28, 16),
+                             (32, 16, 16),   (64, 8, 8),  (64, 8, 8),  (64, 8, 8),
+                             (64, 8, 8),   (96, 8, 8), (96, 8, 8),
+                             (96, 8, 8),  (160, 4, 4),   (160, 4, 4),
+                             (160, 4, 4)]),
+            # table 1. filter numbers over the 22 layers
+            ("channel_size", [16,
+                              24,  24,
+                              32,  32,  32,
+                              64,  64,  64,  64,
+                              96,  96,  96,
+                              160, 160, 160,
+                              320]),
+            # table 1. strides over the 22 layers
+            # mobiletnet v2 - cifar 10
+            ("strides", [1,
+                         1, 1,
+                         2, 1, 1,
+                         2, 1, 1, 1,
+                         1, 1, 1,
+                         2, 1, 1,
+                         1])
+
+            # # mobilenet v2 -imagenet - orig
+            # ("strides", [1,
+            #              2, 1,
+            #              2, 1, 1,
+            #              2, 1, 1, 1,
+            #              1, 1, 1,
+            #              2, 1, 1,
+            #              1])
+        ])
+}
+
 
 # **** to recalculate latency use command:
 # l_table = LookUpTable(calulate_latency=True, path_to_file='lookup_table.txt', cnt_of_runs=50)
@@ -168,14 +110,22 @@ SEARCH_SPACE = OrderedDict([
 
 # TODO - flops change
 class LookUpTable:
-    def __init__(self, candidate_blocks=CANDIDATE_BLOCKS, search_space=SEARCH_SPACE,
-                 calulate_latency=False, path='./supernet_functions/lookup_table.txt'):
-        self.cnt_layers = len(search_space["input_shape"])
+    def __init__(self, candidate_blocks_dict=CANDIDATE_BLOCKS, search_space_dict=SEARCH_SPACE,
+                 calulate_latency=False, path='./supernet_functions/lookup_table.txt', supernet_type='mobilenetv2'):
+        
+        self.candidate_blocks = candidate_blocks_dict[supernet_type]
+        self.search_space = search_space_dict[supernet_type]
+    
+        #print('candidate_blocks:', self.candidate_blocks)
+        #print('search_space:', self.search_space)
+
+        self.cnt_layers = len(self.search_space["input_shape"])
+        
         # constructors for each operation
-        self.lookup_table_operations = {op_name : PRIMITIVES[op_name] for op_name in candidate_blocks}
+        self.lookup_table_operations = {op_name : PRIMITIVES[op_name] for op_name in self.candidate_blocks}
         # arguments for the ops constructors. one set of arguments for all 9 constructors at each layer
         # input_shapes just for convinience
-        self.layers_parameters, self.layers_input_shapes = self._generate_layers_parameters(search_space)
+        self.layers_parameters, self.layers_input_shapes = self._generate_layers_parameters(self.search_space)
         
         # lookup_table
         self.lookup_table_flops = None
@@ -186,6 +136,12 @@ class LookUpTable:
         #     self._create_from_file(path_to_file=CONFIG_SUPERNET['lookup_table']['path_to_lookup_table'])
         #
         self._create_from_file(path_to_file=path)
+
+    def get_candidate_blocks(self):
+        return self.candidate_blocks
+
+    def get_search_space(self):
+        return self.search_space
 
     def _generate_layers_parameters(self, search_space):
         # layers_parameters are : C_in, C_out, expansion, stride
@@ -259,7 +215,7 @@ class LookUpTable:
         flops = [line.strip('\n') for line in open(path_to_file)]
         ops_names = flops[0].split(" ")
         flops = [list(map(float, layer.split(" "))) for layer in flops[1:]]
-        
+       
         lookup_table_flops= [{op_name : flops[i][op_id]
                                       for op_id, op_name in enumerate(ops_names)
                                      } for i in range(self.cnt_layers)]

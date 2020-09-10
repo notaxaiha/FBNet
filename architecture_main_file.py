@@ -128,16 +128,12 @@ def main():
     # flops & param
     fnp = args.fnp
     if args.dataset == 'cifar10':
-        if args.supernet_type == 'simple':
-            model = fbnet_builder.get_model_simple(arch, cnt_classes=10).cuda()
-        elif args.supernet_type == 'resnet':
-            model = fbnet_builder.get_model_simple(arch, cnt_classes=10).cuda()
-        elif args.supernet_type == 'resnet_torch':
+        if args.supernet_type == 'resnet_torchvision':
             model = fbnet_builder.resnet18(pretrained=False, progress=False).cuda()
         else:
-            model = fbnet_builder.get_model(arch, cnt_classes=10).cuda()
+            model = fbnet_builder.get_model(arch, cnt_classes=10, supernet_type=args.supernet_type).cuda()
     elif args.dataset == 'cifar100':
-        model = fbnet_builder.get_model(arch, cnt_classes=100).cuda()
+        model = fbnet_builder.get_model(arch, cnt_classes=100, supernet_type=args.supernet_type).cuda()
 
     model = model.apply(weights_init)
 
@@ -174,8 +170,8 @@ def main():
     else:
         compression_scheduler = None
     
-    print(model)
-    print(summary(model, input_size=(3, 32, 32)))
+    #print(model)
+    #print(summary(model, input_size=(3, 32, 32)))
     
     #### Scheduler
     if args.scheduler == 'MultiStepLR':

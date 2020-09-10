@@ -150,7 +150,6 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH, superne
 
         e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
 
-        print("--jieun e:", e)
         text_to_write += "\n\
                     ],\n\
                     \"block_cfg\": {\n\
@@ -176,7 +175,6 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH, superne
 
         e = [(op_name[-1] if op_name[-2] == 'e' else '1') for op_name in ops_names]
 
-        print("--jieun e:", e)
         text_to_write += "\n\
                     ],\n\
                     \"block_cfg\": {\n\

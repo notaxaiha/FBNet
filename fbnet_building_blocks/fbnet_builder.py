@@ -957,9 +957,6 @@ def unify_arch_def(arch_def):
     _add_to_arch(ret["stages"], arch_def["block_op_type"], "block_op_type")
     del ret["block_op_type"]
     
-    print('--jieun:(type):', type(ret))
-    print('--jieun: ret:', ret)
-
     return ret
 
 
@@ -1171,7 +1168,6 @@ class FBNet(nn.Module):
 
         if self.supernet_type == 'resnet':
             y = self.maxpool(y)
-            pass
         
         y = self.stages(y)
         y = self.last_stages(y)
@@ -1211,28 +1207,21 @@ class FBNet(nn.Module):
         print('last stage : ', flops3)
         return accumlated_flops
 
-def get_model(arch, cnt_classes):
+def get_model(arch, cnt_classes, supernet_type):
     # for reload updated arch
     importlib.reload(fbnet_modeldef)
     assert arch in fbnet_modeldef.MODEL_ARCH
     arch_def = fbnet_modeldef.MODEL_ARCH[arch]
     arch_def = unify_arch_def(arch_def)
     builder = FBNetBuilder(width_ratio=1.0, bn_type="bn", width_divisor=8, dw_skip_bn=True, dw_skip_relu=True)
-    model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes)
-    return model
-
-def get_model_simple(arch, cnt_classes):
-    # for reload updated arch
-    importlib.reload(fbnet_modeldef)
-    assert arch in fbnet_modeldef.MODEL_ARCH
-    arch_def = fbnet_modeldef.MODEL_ARCH[arch]
-    arch_def = unify_arch_def(arch_def)
-    builder = FBNetBuilder(width_ratio=1.0, bn_type="bn", width_divisor=8, dw_skip_bn=True, dw_skip_relu=True)
-    model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes, supernet_type='resnet')
+    model = FBNet(builder, arch_def, dim_in=3, cnt_classes=cnt_classes, supernet_type=supernet_type)
     return model
 
 
 ##################################################
+# torchvision ResNet18
+##################################################
+
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,

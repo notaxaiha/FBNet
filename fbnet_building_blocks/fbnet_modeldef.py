@@ -1566,4 +1566,4 @@ MODEL_ARCH = {
                     "backbone": [num for num in range(18)],
                 },
             },
-    }    
+        }        

@@ -151,8 +151,8 @@ def train_supernet():
     writer = SummaryWriter(log_dir=join(save_path, 'tb'))
 
     #### lookup table consists all information about layers
-    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
-    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path, supernet_type=args.supernet_type)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path, supernet_type=args.supernet_type)
 
     #### dataloading
     train_w_loader, train_thetas_loader = get_loaders(args.data_split,
@@ -167,7 +167,7 @@ def train_supernet():
 
     if args.dataset == 'cifar10':
         if args.supernet_type == 'resnet':
-            model = FBNet_Stochastic_SuperNet_ResNet(lookup_table, cnt_classes=10).cuda()
+            model = FBNet_Stochastic_SuperNet_ResNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
         else:
             model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
@@ -194,7 +194,7 @@ def train_supernet():
     model = model.apply(weights_init)
     model = nn.DataParallel(model, device_ids=[0])
     
-    print(model)
+    #print(model)
 
     #from torchsummary import summary
     #summary(model, (3, 32, 32))
@@ -231,12 +231,12 @@ def train_supernet():
 def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True):
     logger = get_logger(join(curdir, 'searched_result', args.architecture_name, 'supernet_function_logs', 'logger'))
 
-    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
-    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path, supernet_type=args.supernet_type)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path, supernet_type=args.supernet_type)
 
     if args.dataset == 'cifar10':
         if args.supernet_type == 'resnet':
-            model = FBNet_Stochastic_SuperNet_ResNet(lookup_table, cnt_classes=10).cuda()
+            model = FBNet_Stochastic_SuperNet_ResNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
         else:
             model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
@@ -274,8 +274,8 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
 
 def check_flops():
     #### lookup table consists all information about layers
-    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path)
-    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path)
+    lookup_table = LookUpTable(calulate_latency=False, path=args.flops_LUT_path, supernet_type=args.supernet_type)
+    params_lookup_table = LookUpTable(calulate_latency=False, path=args.params_LUT_path, supernet_type=args.supernet_type)
     
     #### dataloading
     data_shape = [1, 3, 32, 32]
@@ -299,7 +299,9 @@ def check_flops():
 
     params_lookup_table.write_lookup_table_to_file(path_to_file=args.params_LUT_path,
                                             flops_list=params_list)
-    print(params_list)
+    #print(params_list)
+
+
 if __name__ == "__main__":
 
     # set gpu number to use

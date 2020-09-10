@@ -191,7 +191,7 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         return y, flops_list, params_list
     
 class FBNet_Stochastic_SuperNet_ResNet(nn.Module):
-    def __init__(self, lookup_table, cnt_classes=1000):
+    def __init__(self, lookup_table, params_lookup_table, cnt_classes=1000):
         super(FBNet_Stochastic_SuperNet_ResNet, self).__init__()
 
         data_shape = [1, 3, 32, 32]
@@ -201,13 +201,15 @@ class FBNet_Stochastic_SuperNet_ResNet(nn.Module):
         self.first = ConvBNRelu(input_depth=3, output_depth=64, kernel=7, stride=2,
                                 pad=3, no_bias=1, use_relu="relu", bn_type="bn")
         self.first_flops = self.first.get_flops(x, only_flops=True)
+        self.first_params = sum(p.numel() for p in self.first.parameters() if p.requires_grad)
 
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.stages_to_search = nn.ModuleList([MixedOperation(
                                                    lookup_table.layers_parameters[layer_id],
                                                    lookup_table.lookup_table_operations,
-                                                   lookup_table.lookup_table_flops[layer_id])
+                                                   lookup_table.lookup_table_flops[layer_id],
+                                                   params_lookup_table.lookup_table_flops[layer_id])
                                                for layer_id in range(lookup_table.cnt_layers)])
         self.last_stages = nn.Sequential(OrderedDict([
             ("avg_pool_k7", nn.AdaptiveAvgPool2d((1, 1))),
@@ -226,29 +228,35 @@ class FBNet_Stochastic_SuperNet_ResNet(nn.Module):
         x = torch.torch.zeros(data_shape).cuda()
 
         self.last_stages_flops = last_conv_temp.get_flops(x, only_flops=True) + nn.Linear(in_features=1280, out_features=cnt_classes).weight.numel()
-        #print('last_stages_flops:', self.last_stages_flops)
+       
+
+        self.last_stages_params = sum(p.numel() for p in self.last_stages.parameters() if p.requires_grad)
         del data_shape, x, last_conv_temp
 
     
-    def forward(self, x, temperature, flops_to_accumulate, eval_mode=None):
+    def forward(self, x, temperature, flops_to_accumulate, params_to_accumulate, sampling_mode=None):
         y = self.first(x)
         # add flops from first layer
         flops_to_accumulate += self.first.get_flops(x, only_flops=True)
+        params_to_accumulate = self.first_params
         
         y = self.maxpool(y)
 
         for mixed_op in self.stages_to_search:
-            y, flops_to_accumulate = mixed_op(y, temperature, flops_to_accumulate, eval_mode)
+            y, flops_to_accumulate, params_to_accumulate = mixed_op(y, temperature, flops_to_accumulate, params_to_accumulate, sampling_mode)
         y = self.last_stages(y)
 
         # add flops from last stage
         flops_to_accumulate += self.last_stages_flops
 
-        return y, flops_to_accumulate
+        params_to_accumulate += self.last_stages_params
+
+        return y, flops_to_accumulate, params_to_accumulate
 
     # TODO -
     def get_flops(self, x, temperature):
         flops_list = []
+        params_list = []
 
         y = self.first(x)
         for mixed_op in self.stages_to_search:
@@ -257,8 +265,13 @@ class FBNet_Stochastic_SuperNet_ResNet(nn.Module):
         for mixed_op in self.stages_to_search:
 
             flops_list.append(mixed_op.flops)
+            params_list.append(mixed_op.get_params())
+            print('flops', mixed_op.flops)
+            print('params', mixed_op.get_params())
+
         y = self.last_stages(y)
-        return y, flops_list
+        return y, flops_list, params_list
+
     
 class SupernetLoss(nn.Module):
     def __init__(self, alpha, beta, reg_lambda, reg_loss_type, ref_value = 30 * 1e6, apply_flop_loss=True) :
