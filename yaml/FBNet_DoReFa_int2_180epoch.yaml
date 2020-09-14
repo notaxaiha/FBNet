@@ -1,0 +1,31 @@
+
+quantizers:
+  dorefa_quantizer:
+    class: DorefaQuantizer
+    bits_activations: 2
+    bits_weights: 2
+
+
+
+lr_schedulers:
+  training_lr:
+    # class: MultiStepMultiGammaLR
+    class: CosineAnnealingLR
+    T_max: 180
+    eta_min: 0.001
+    #milestones: [60, 120, 180]
+    #gammas: [0.1, 0.1, 0.2]
+
+policies:
+    - quantizer:
+        instance_name: dorefa_quantizer
+      starting_epoch: 0
+      ending_epoch: 180
+      frequency: 1
+
+    - lr_scheduler:
+        instance_name: training_lr
+      starting_epoch: 0
+      ending_epoch: 180
+      frequency: 1
+
