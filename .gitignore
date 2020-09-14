@@ -159,3 +159,5 @@ searched_result
 # sh file
 *.sh
 
+# temp dir
+temp/
