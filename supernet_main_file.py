@@ -53,7 +53,7 @@ parser.add_argument('--thetas_decay', type=float, default=5 * 1e-4, \
                     help="theatas optimizer's decay")
 
 # loss
-parser.add_argument('--apply_flop_loss', type=bool, default=False, \
+parser.add_argument('--apply_flop_loss', type=str, default="False", \
                     help="apply flops loss or not")
 parser.add_argument('--reg_loss_type', type=str, default="add#linear", \
                     help="choose flop loss type 'add#linear' or 'mul#log'")
@@ -176,7 +176,7 @@ def train_supernet():
                                   momentum=args.w_momentum,
                                   weight_decay=args.w_decay)
 
-    theta_optimizer = torch.optim.Adam(params=thetas_params,
+    theta_optimizer = torch.optim.Adam( params=thetas_params,
                                        lr=args.thetas_lr,
                                        weight_decay=args.thetas_decay)
 

@@ -153,6 +153,7 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         # print(self.last_stages_params)
         del data_shape, x, last_conv_temp
 
+
     
     def forward(self, x, temperature, flops_to_accumulate, params_to_accumulate, sampling_mode=None):
         y = self.first(x)
@@ -191,7 +192,7 @@ class FBNet_Stochastic_SuperNet(nn.Module):
         return y, flops_list, params_list
     
 class SupernetLoss(nn.Module):
-    def __init__(self, alpha, beta, reg_lambda, reg_loss_type, ref_value = 30 * 1e6, apply_flop_loss=True) :
+    def __init__(self, alpha, beta, reg_lambda, reg_loss_type, ref_value = 30 * 1e6, apply_flop_loss="False") :
         super(SupernetLoss, self).__init__()
         self.alpha = alpha
         self.beta = beta
@@ -212,8 +213,10 @@ class SupernetLoss(nn.Module):
         flops.update(flops_to_accumulate.item(), N)
         params.update(params_to_accumulate.item(), N)
         
-        if self.apply_flop_loss == False:
+        if self.apply_flop_loss == "False":
             return ce_loss
+
+        assert self.apply_flop_loss == "True", 'apply_flop_loss must be "True" or "Fasle".'
 
         # print(flops_to_accumulate)
 
