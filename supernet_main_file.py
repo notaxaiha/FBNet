@@ -53,7 +53,7 @@ parser.add_argument('--thetas_decay', type=float, default=5 * 1e-4, \
                     help="theatas optimizer's decay")
 
 # loss
-parser.add_argument('--apply_flop_loss', type=bool, default=False, \
+parser.add_argument('--apply_flop_loss', type=str, default="False", \
                     help="apply flops loss or not")
 parser.add_argument('--reg_loss_type', type=str, default="add#linear", \
                     help="choose flop loss type 'add#linear' or 'mul#log'")
@@ -166,7 +166,8 @@ def train_supernet():
         model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
         model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=100).cuda()
-
+    elif args.dataset == 'tiny_imagenet':
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=200).cuda()
     thetas_params = [param for name, param in model.named_parameters() if 'thetas' in name]
     params_except_thetas = [param for param in model.parameters() if not check_tensor_in_list(param, thetas_params)]
 
@@ -175,7 +176,7 @@ def train_supernet():
                                   momentum=args.w_momentum,
                                   weight_decay=args.w_decay)
 
-    theta_optimizer = torch.optim.Adam(params=thetas_params,
+    theta_optimizer = torch.optim.Adam( params=thetas_params,
                                        lr=args.thetas_lr,
                                        weight_decay=args.thetas_decay)
 
@@ -226,8 +227,10 @@ def sample_architecture_from_the_supernet(unique_name_of_arch, hardsampling=True
     if args.dataset == 'cifar10':
         model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
-        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table,  cnt_classes=100).cuda()
-
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table,  cnt_classes=100).cuda()    
+    elif args.dataset == 'tiny_imagenet':
+        model = FBNet_Stochastic_SuperNet(lookup_table, params_lookup_table,  cnt_classes=200).cuda()
+    
     if args.quantization:
         w_optimizer = None
         yaml_path = args.quantization

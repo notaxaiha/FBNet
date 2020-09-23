@@ -129,7 +129,9 @@ def main():
         model = fbnet_builder.get_model(arch, cnt_classes=10).cuda()
     elif args.dataset == 'cifar100':
         model = fbnet_builder.get_model(arch, cnt_classes=100).cuda()
-
+    elif args.dataset == 'tiny_imagenet':
+        model = fbnet_builder.get_model(arch, cnt_classes=200).cuda()
+    
     model = model.apply(weights_init)
 
     # only calculate flops and params
