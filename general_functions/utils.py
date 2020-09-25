@@ -196,7 +196,6 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH, superne
         "
     
     else:
-
         text_to_write = "    \"" + my_unique_name_for_ARCH + "\": {\n\
                 \"block_op_type\": [\n"
 
@@ -213,7 +212,7 @@ def writh_new_ARCH_to_fbnet_modeldef(ops_names, my_unique_name_for_ARCH, superne
                         \"first\": [32, 1],\n\
                         \"stages\": [\n\
                             [[" + e[0] + ", 16, 1, 1]],                                                        # stage 1\n\
-                            [[" + e[1] + ", 24, 1, 2]],  [[" + e[2] + ", 24, 1, 1]],  # stage 2\n\
+                            [[" + e[1] + ", 24, 1, 1]],  [[" + e[2] + ", 24, 1, 1]],  # stage 2\n\
                             [[" + e[3] + ", 32, 1, 2]],  [[" + e[4] + ", 32, 1, 1]],  \
             [[" + e[5] + ", 32, 1, 1]],  # stage 3\n\
                             [[" + e[6] + ", 64, 1, 2]],  [[" + e[7] + ", 64, 1, 1]],  \
